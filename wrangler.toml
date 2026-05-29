@@ -1,0 +1,32 @@
+# Cloudflare Worker config for the Claude coding mascot.
+#
+# Quick start:
+#   1. npm install
+#   2. npm run dev            # local dev — KV is simulated, no account needed
+#   3. open http://127.0.0.1:8787/mascot.svg
+#
+# To deploy:
+#   1. npx wrangler login
+#   2. npm run kv:create      # creates the KV namespace + a preview one
+#   3. paste the printed ids into the [[kv_namespaces]] block below
+#   4. npm run deploy
+
+name = "claude-coding-mascot"
+main = "src/worker.js"
+compatibility_date = "2025-09-01"
+
+# State + pre-rendered 3D assets live here.
+# For `wrangler dev` the ids below are ignored (KV is simulated locally).
+# For `wrangler deploy` replace them with the ids from `npm run kv:create`.
+[[kv_namespaces]]
+binding = "MASCOT_KV"
+id = "REPLACE_WITH_KV_ID"
+preview_id = "REPLACE_WITH_PREVIEW_KV_ID"
+
+[observability]
+enabled = true
+
+# Optional: protect the POST endpoints with a shared secret.
+# Set it with:  npx wrangler secret put MASCOT_TOKEN
+# Then send  Authorization: Bearer <token>  on /coding-now and /coding-stopped.
+# If unset, the POST endpoints are open (fine for a private demo).

@@ -1,0 +1,47 @@
+{
+  "_comment": "Claude Code hooks that drive the mascot. Merge the 'hooks' block into your ~/.claude/settings.json (global) or a project's .claude/settings.json. Replace YOUR-WORKER and (optionally) YOUR_TOKEN. Every active event refreshes the 'coding' heartbeat; SessionEnd flips to idle; the Worker's 5-min TTL handles abrupt kills.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "http",
+            "url": "https://YOUR-WORKER.workers.dev/coding-now",
+            "timeout": 10,
+            "headers": { "Authorization": "Bearer YOUR_TOKEN" },
+            "allowedEnvVars": []
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "http", "url": "https://YOUR-WORKER.workers.dev/coding-now", "timeout": 10, "headers": { "Authorization": "Bearer YOUR_TOKEN" } }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "http", "url": "https://YOUR-WORKER.workers.dev/coding-now", "timeout": 10, "headers": { "Authorization": "Bearer YOUR_TOKEN" } }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "http", "url": "https://YOUR-WORKER.workers.dev/coding-now", "timeout": 10, "headers": { "Authorization": "Bearer YOUR_TOKEN" } }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          { "type": "http", "url": "https://YOUR-WORKER.workers.dev/coding-stopped", "timeout": 10, "headers": { "Authorization": "Bearer YOUR_TOKEN" } }
+        ]
+      }
+    ]
+  }
+}

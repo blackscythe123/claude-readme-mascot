@@ -1,0 +1,20 @@
+{
+  "name": "claude-coding-mascot",
+  "version": "0.1.0",
+  "description": "A live AI-coding mascot for your GitHub profile README. Shows a Claude/Codex/Gemini mascot that wakes up and codes when your AI agent is working, and naps when you stop.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "preview": "node scripts/preview.mjs",
+    "build:frames": "node scripts/build-apng.mjs",
+    "upload:assets": "node scripts/upload-assets.mjs",
+    "kv:create": "wrangler kv namespace create MASCOT_KV && wrangler kv namespace create MASCOT_KV --preview"
+  },
+  "devDependencies": {
+    "pngjs": "^7.0.0",
+    "upng-js": "^2.1.0",
+    "wrangler": "^4.0.0"
+  }
+}

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coding mascot — manual control</title>
+<style>
+  body { font: 16px/1.6 system-ui, sans-serif; max-width: 540px; margin: 48px auto; padding: 0 16px; color: #2b2622; }
+  h1 { font-size: 22px; }
+  input { width: 100%; padding: 10px 12px; border: 1px solid #e3d8cf; border-radius: 10px; font-size: 14px; box-sizing: border-box; }
+  .row { display: flex; gap: 12px; margin: 18px 0; }
+  button { flex: 1; padding: 14px; border: 0; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; color: #fff; }
+  .go { background: #D97757; }
+  .stop { background: #9A938D; }
+  img { width: 100%; max-width: 480px; display: block; margin: 20px auto; border-radius: 14px; }
+  #out { font: 13px ui-monospace, monospace; color: #8a817b; white-space: pre-wrap; }
+  label { font-size: 13px; color: #8a817b; }
+</style>
+</head>
+<body>
+  <h1>🦀 Coding mascot — manual control</h1>
+  <label>Worker base URL</label>
+  <input id="base" value="http://127.0.0.1:8787">
+  <label>Token (optional, if you set MASCOT_TOKEN)</label>
+  <input id="token" placeholder="leave blank if none">
+  <div class="row">
+    <button class="go" onclick="hit('/coding-now')">▶ I started coding</button>
+    <button class="stop" onclick="hit('/coding-stopped')">⏹ I stopped</button>
+  </div>
+  <img id="mascot" alt="mascot">
+  <div id="out"></div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  function refresh() {
+    const base = $("base").value.replace(/\/+$/, "");
+    $("mascot").src = base + "/mascot.svg?t=" + Date.now();
+  }
+  async function hit(path) {
+    const base = $("base").value.replace(/\/+$/, "");
+    const headers = { "content-type": "application/json" };
+    if ($("token").value) headers.authorization = "Bearer " + $("token").value;
+    try {
+      const r = await fetch(base + path, { method: "POST", headers, body: JSON.stringify({ tool: "claude", task: "manual" }) });
+      $("out").textContent = await r.text();
+    } catch (e) {
+      $("out").textContent = "error: " + e.message;
+    }
+    refresh();
+  }
+  refresh();
+  setInterval(refresh, 5000);
+</script>
+</body>
+</html>
