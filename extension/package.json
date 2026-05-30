@@ -2,7 +2,7 @@
   "name": "claude-coding-mascot",
   "displayName": "Claude Coding Mascot",
   "description": "Drive your GitHub README coding mascot live — flips to 'coding' while you type and 'idle' when you stop.",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "publisher": "blackscythe123",
   "license": "MIT",
   "icon": "icon.png",
