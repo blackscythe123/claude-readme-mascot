@@ -33,7 +33,7 @@ copy the snippet. Or build the URL by hand:
 |---|---|---|---|
 | `status` | `coding` \| `idle` | `idle` | which scene to show (Phase 2: live) |
 | `theme` | `light` \| `dark` \| `terminal` \| `candy` | `light` | preset; individual colors below override it |
-| `body` | hex (no `#`) | theme | crab body color |
+| `body` | hex (no `#`) | theme | Claude body color |
 | `accent` | hex | theme | headband / dot / glow / border |
 | `text` | hex | theme | title + text color |
 | `bg` | hex or `transparent` | theme | card background |
@@ -132,7 +132,7 @@ the Vercel functions and kept only for reference.)*
 
 ## Mascot & credits
 
-The mascot is the Claude crab, ported from
+The mascot is the Claude Claude, ported from
 [`clawd-react`](https://github.com/stevysmith/clawd-react) (MIT — see
 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)). The headband + jump/confetti
 beat nods to the [Codrops Claude-mascot breakdown](https://tympanus.net/codrops/2026/05/05/reverse-engineering-claude-ais-mascot-animations-with-svg-and-gsap/).

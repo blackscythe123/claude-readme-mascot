@@ -1,4 +1,4 @@
-// Mascot renderer — the Claude crab, themeable + state-aware animated SVG.
+// Mascot renderer — the Claude Claude, themeable + state-aware animated SVG.
 //
 // Character geometry ported from `clawd-react` by Steve Smith (MIT License) —
 // https://github.com/stevysmith/clawd-react. framer-motion (JS) is replaced
