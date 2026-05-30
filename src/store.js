@@ -13,7 +13,7 @@
 import { Redis } from "@upstash/redis";
 import crypto from "node:crypto";
 
-const TTL_SECONDS = 300; // no ping for 5 min → treated as idle (key expires)
+const TTL_SECONDS = 900; // no ping for 15 min → treated as idle (crash backstop)
 
 let _redis;
 export function getRedis() {
@@ -39,19 +39,16 @@ export function isAllowed(publicId) {
 }
 
 // Called by the IDE (with the secret key) to update live status.
-export async function setStatus(secretKey, status) {
+// Single Redis command (write only) — the IDE sends its own `sinceMs` so we
+// don't need a read to preserve the coding start time.
+export async function setStatus(secretKey, status, sinceMs) {
   const r = getRedis();
   if (!r) throw new Error("store not configured (missing Upstash env vars)");
   const id = publicIdFor(secretKey);
   const now = Date.now();
-  let value;
-  if (status === "coding") {
-    const prev = await r.get(chanKey(id));
-    const sinceMs = prev && prev.status === "coding" && prev.sinceMs ? prev.sinceMs : now;
-    value = { status: "coding", sinceMs, lastSeenMs: now };
-  } else {
-    value = { status: "idle", sinceMs: now, lastSeenMs: now };
-  }
+  const value = status === "coding"
+    ? { status: "coding", sinceMs: Number(sinceMs) || now, lastSeenMs: now }
+    : { status: "idle", sinceMs: now, lastSeenMs: now };
   await r.set(chanKey(id), value, { ex: TTL_SECONDS });
   return id;
 }

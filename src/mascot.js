@@ -127,6 +127,8 @@ export function renderMascotSVG(opts = {}) {
     ? (t.hideTime ? "at the keyboard" : `at the keyboard · ${elapsed}`)
     : (t.hideTime ? "taking a nap" : `idle for ${elapsed}`);
   const pillText = coding ? "● live · coding now" : "○ idle";
+  // shrink the title font so long labels (e.g. "blackscythe123 is coding") don't overflow
+  const titleSize = Math.max(13, Math.min(25, Math.floor(210 / (0.52 * title.length))));
 
   // ===== coding scene =====
   const codingScene = `
@@ -206,7 +208,7 @@ export function renderMascotSVG(opts = {}) {
     ${coding ? codingScene : idleScene}
   </g>
 
-  <text x="250" y="92" font-family="${font}" font-size="25" font-weight="700" fill="${text}">${esc(title)}</text>
+  <text x="250" y="92" font-family="${font}" font-size="${titleSize}" font-weight="700" fill="${text}">${esc(title)}</text>
   <text x="250" y="120" font-family="${font}" font-size="15" fill="${text}" fill-opacity="0.6">${esc(sub)}</text>
   ${coding
     ? `<circle cx="258" cy="151" r="5" fill="${accent}"><animate attributeName="opacity" values="1;0.25;1" dur="1.3s" repeatCount="indefinite"/></circle>`

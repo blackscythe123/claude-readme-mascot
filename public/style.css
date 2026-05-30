@@ -18,6 +18,7 @@ footer a { color: var(--accent); }
 
 .controls { background: #fff; border: 1px solid var(--bd); border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
 .controls label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: #6b635c; }
+.controls .hint { font-weight: 400; font-size: 11px; color: var(--muted); }
 .controls select, .controls input[type=text], .controls input[type=number] { padding: 9px 10px; border: 1px solid var(--bd); border-radius: 9px; font: inherit; }
 .controls .colors { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .controls .colors label { flex-direction: row; align-items: center; justify-content: space-between; }

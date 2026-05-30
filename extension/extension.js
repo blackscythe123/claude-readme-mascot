@@ -14,7 +14,7 @@ const crypto = require("crypto");
 
 const SECRET_KEY = "claudeMascot.key";
 const TICK_MS = 30000;
-const HEARTBEAT_MS = 120000;
+const HEARTBEAT_MS = 600000; // refresh while coding at most every 10 min (< 15-min TTL)
 const DEPLOY_URL = "https://vercel.com/new/clone?repository-url=https://github.com/blackscythe123/claude-readme-mascot&project-name=claude-coding-mascot&repository-name=claude-coding-mascot&stores=%5B%7B%22type%22%3A%22kv%22%7D%5D";
 
 let ctx;
@@ -23,6 +23,7 @@ let statusBar;
 let panelView = null;
 let lastActivity = 0;
 let lastCodingPost = 0;
+let codingSince = 0;
 let currentStatus = "idle";
 let locked = false;
 let warnedLocked = false;
@@ -92,8 +93,9 @@ async function tick() {
   const now = Date.now();
   const active = now - lastActivity <= idleTimeoutMs();
   if (active) {
+    if (currentStatus !== "coding") codingSince = now; // start of a new coding session
     if (currentStatus !== "coding" || now - lastCodingPost > HEARTBEAT_MS) {
-      const code = await post("/api/coding-now");
+      const code = await post(`/api/coding-now?since=${codingSince}`);
       if (code === 403) return setLocked(true);
       if (code) setLocked(false);
       lastCodingPost = now;
@@ -174,6 +176,8 @@ const panelProvider = {
         case "copyKey": return copyKey();
         case "copyId": return key ? (vscode.env.clipboard.writeText(publicId(key)), vscode.window.showInformationMessage("Public id copied — set it as ALLOWED_IDS to lock your server.")) : null;
         case "openSite": return vscode.env.openExternal(vscode.Uri.parse(baseUrl()));
+        case "customize": return vscode.env.openExternal(vscode.Uri.parse(baseUrl() + (key ? "/?id=" + publicId(key) : "/")));
+        case "openSettings": return vscode.commands.executeCommand("workbench.action.openSettings", "claudeMascot.baseUrl");
         case "deploy": return vscode.env.openExternal(vscode.Uri.parse(DEPLOY_URL));
         case "unlink": return unlink();
         case "ready": return updatePanel();
@@ -207,14 +211,15 @@ function panelHtml() {
   let s = { hasKey: false };
   const app = document.getElementById("app");
   function esc(t){ return String(t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
-  function img(){ return s.baseUrl + "/mascot.svg?" + (s.id ? ("id=" + s.id) : "status=" + s.status) + "&cb=" + Date.now(); }
+  function img(){ return s.baseUrl + "/mascot.svg?status=" + s.status; } // local status only — never reads the server DB
   function render(){
     if (!s.hasKey) {
       app.innerHTML =
         "<p>Link your README to start. Your editor activity drives the mascot automatically.</p>" +
         '<button data-cmd="generate">Generate key &amp; embed</button>' +
         '<button class="secondary" data-cmd="setKey">Set key (paste existing)</button>' +
-        '<button class="secondary" data-cmd="openSite">Open playground</button>';
+        '<button class="secondary" data-cmd="openSite">Open playground</button>' +
+        '<p class="muted">Server: <code>' + esc(s.baseUrl) + '</code><button class="secondary" data-cmd="openSettings">Change server</button></p>';
       return;
     }
     if (s.locked) {
@@ -232,17 +237,18 @@ function panelHtml() {
       "<p>Paste this in your GitHub README:</p>" +
       "<code>" + esc(s.embed) + "</code>" +
       '<button data-cmd="copyEmbed">Copy README embed</button>' +
+      '<button class="secondary" data-cmd="customize">🎨 Customize on the website</button>' +
       '<button class="secondary" data-cmd="copyKey">Copy key (for your other laptops)</button>' +
       '<button class="secondary" data-cmd="setKey">Set / change key</button>' +
       '<button class="secondary" data-cmd="unlink">Unlink</button>' +
-      '<p class="muted">Self-hosting? Your public id (for ALLOWED_IDS): <br><code>' + esc(s.id) + '</code><button class="secondary" data-cmd="copyId">Copy id</button></p>';
+      '<p class="muted">Server: <code>' + esc(s.baseUrl) + '</code><button class="secondary" data-cmd="openSettings">Change server</button></p>' +
+      '<p class="muted">Self-hosting? Your public id (for ALLOWED_IDS):<br><code>' + esc(s.id) + '</code><button class="secondary" data-cmd="copyId">Copy id</button></p>';
   }
   app.addEventListener("click", (e) => {
     const b = e.target.closest("button");
     if (b) vscode.postMessage({ cmd: b.getAttribute("data-cmd") });
   });
   window.addEventListener("message", (e) => { if (e.data && e.data.type === "state") { s = e.data; render(); } });
-  setInterval(() => { const m = document.getElementById("m"); if (m) m.src = img(); }, 15000);
   vscode.postMessage({ cmd: "ready" });
   render();
 </script></body></html>`;

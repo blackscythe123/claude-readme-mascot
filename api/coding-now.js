@@ -21,8 +21,9 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: "server private", deploy: "https://github.com/blackscythe123/claude-readme-mascot#self-host" });
   }
 
+  const since = Number((req.query && req.query.since) || (req.body && req.body.since)) || undefined;
   try {
-    const id = await setStatus(key, "coding");
+    const id = await setStatus(key, "coding", since);
     res.json({ ok: true, status: "coding", id });
   } catch (e) {
     res.status(500).json({ error: String(e.message || e) });
