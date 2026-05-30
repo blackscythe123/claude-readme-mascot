@@ -10,7 +10,7 @@
   "categories": ["Other"],
   "keywords": ["coding", "mascot", "readme", "status", "github", "claude", "crab"],
   "galleryBanner": { "color": "#17120E", "theme": "dark" },
-  "homepage": "https://pet-zeta-gules.vercel.app",
+  "homepage": "https://pet.simiyonvinscentsamuel.tech",
   "repository": { "type": "git", "url": "https://github.com/blackscythe123/claude-readme-mascot" },
   "bugs": { "url": "https://github.com/blackscythe123/claude-readme-mascot/issues" },
   "activationEvents": ["onStartupFinished"],
@@ -27,7 +27,7 @@
       "properties": {
         "claudeMascot.baseUrl": {
           "type": "string",
-          "default": "https://pet-zeta-gules.vercel.app",
+          "default": "https://pet.simiyonvinscentsamuel.tech",
           "description": "Base URL of your deployed mascot site."
         },
         "claudeMascot.idleTimeoutSeconds": {

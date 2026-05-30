@@ -1,6 +1,6 @@
 # Claude Coding Mascot — VS Code extension
 
-Drives your GitHub-README [Claude coding mascot](https://pet-zeta-gules.vercel.app)
+Drives your GitHub-README [Claude coding mascot](https://pet.simiyonvinscentsamuel.tech)
 live: it flips to **coding** while you type and **idle** when you stop.
 
 ## How it works
@@ -21,7 +21,7 @@ drive the same mascot.
 ## Settings
 | Setting | Default | What |
 |---|---|---|
-| `claudeMascot.baseUrl` | `https://pet-zeta-gules.vercel.app` | your deployed site |
+| `claudeMascot.baseUrl` | `https://pet.simiyonvinscentsamuel.tech` | your deployed site |
 | `claudeMascot.idleTimeoutSeconds` | `300` | inactivity before idle |
 
 ## Run it locally (dev)

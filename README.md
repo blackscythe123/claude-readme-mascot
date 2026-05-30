@@ -23,10 +23,10 @@ Everything is a URL query param on the SVG endpoint. Try the **playground** (the
 site root once deployed, or `vercel dev` locally) to configure it visually and
 copy the snippet. Or build the URL by hand:
 
-**Live:** playground → <https://pet-zeta-gules.vercel.app> · endpoint → `/mascot.svg`
+**Live:** playground → <https://pet.simiyonvinscentsamuel.tech> · endpoint → `/mascot.svg`
 
 ```md
-![coding status](https://pet-zeta-gules.vercel.app/mascot.svg?status=coding&theme=dark&hide_time=true)
+![coding status](https://pet.simiyonvinscentsamuel.tech/mascot.svg?status=coding&theme=dark&hide_time=true)
 ```
 
 | Param | Type | Default | Notes |
@@ -66,13 +66,13 @@ Open `http://localhost:3000/mascot.svg?status=coding&theme=terminal` to see para
 ```bash
 npm i -g vercel       # if you don't have it
 vercel login
-npm run deploy        # -> https://pet-zeta-gules.vercel.app
+npm run deploy        # -> https://pet.simiyonvinscentsamuel.tech
 ```
 
 Then embed:
 
 ```md
-![coding status](https://pet-zeta-gules.vercel.app/mascot.svg?status=coding)
+![coding status](https://pet.simiyonvinscentsamuel.tech/mascot.svg?status=coding)
 ```
 
 GitHub serves README images through its camo proxy with ~minutes freshness, so
@@ -89,7 +89,7 @@ type and **idle** when you stop.
    dev host), or package it: `cd extension && npx @vscode/vsce package` → *Install from VSIX…*.
 2. Run **Claude Mascot: Generate Key & Link** (or click the status-bar item). It
    generates a secret key (kept in your IDE) and copies it to the clipboard.
-3. On the [link page](https://pet-zeta-gules.vercel.app/link.html), paste the key →
+3. On the [link page](https://pet.simiyonvinscentsamuel.tech/link.html), paste the key →
    copy the `?id=…` README snippet into your GitHub profile.
 4. Code. The extension heartbeats `coding`; after ~5 idle minutes it goes `idle`.
 
@@ -98,7 +98,7 @@ appears publicly and nobody can spoof your status. Paste the same key into other
 editors to drive the one mascot from all of them.
 
 ```md
-![coding status](https://pet-zeta-gules.vercel.app/mascot.svg?id=YOUR_PUBLIC_ID&theme=dark)
+![coding status](https://pet.simiyonvinscentsamuel.tech/mascot.svg?id=YOUR_PUBLIC_ID&theme=dark)
 ```
 
 How it stays live: the extension POSTs to `/api/coding-now` (Bearer key); state is
