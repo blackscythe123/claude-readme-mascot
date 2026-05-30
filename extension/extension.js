@@ -15,7 +15,7 @@ const crypto = require("crypto");
 const SECRET_KEY = "claudeMascot.key";
 const TICK_MS = 30000;
 const HEARTBEAT_MS = 120000;
-const DEPLOY_URL = "https://vercel.com/new/clone?repository-url=https://github.com/blackscythe123/claude-readme-mascot";
+const DEPLOY_URL = "https://vercel.com/new/clone?repository-url=https://github.com/blackscythe123/claude-readme-mascot&project-name=claude-coding-mascot&repository-name=claude-coding-mascot&stores=%5B%7B%22type%22%3A%22kv%22%7D%5D";
 
 let ctx;
 let key = null;

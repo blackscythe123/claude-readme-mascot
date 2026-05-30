@@ -111,9 +111,9 @@ stored in **Upstash Redis** with a 5-minute TTL; `/mascot.svg?id=…` reads it.
 The public demo server costs its owner per live ping, so it's **locked to the
 owner's key**. To run your own (free):
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/blackscythe123/claude-readme-mascot)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/blackscythe123/claude-readme-mascot&project-name=claude-coding-mascot&repository-name=claude-coding-mascot&stores=%5B%7B%22type%22%3A%22kv%22%7D%5D)
 
-1. Click **Deploy**, then add **Upstash Redis** from the project's Storage tab (injects `KV_REST_API_*`).
+1. Click **Deploy** → the wizard prompts you to **create a free database** (Upstash Redis) as a step; it wires the env vars for you. Deploy.
 2. Install the VS Code extension and set `claudeMascot.baseUrl` to your new URL.
 3. Generate a key in the extension panel → it shows your README embed.
 
