@@ -30,6 +30,14 @@ export function publicIdFor(key) {
 
 const chanKey = (publicId) => `chan:${publicId}`;
 
+// Allowlist: if ALLOWED_IDS is set (comma-separated public ids), only those ids
+// may write live status / be read from the store. Unset = open (self-hosters).
+export function isAllowed(publicId) {
+  const raw = process.env.ALLOWED_IDS;
+  if (!raw || !raw.trim()) return true;
+  return raw.split(",").map((s) => s.trim()).filter(Boolean).includes(publicId);
+}
+
 // Called by the IDE (with the secret key) to update live status.
 export async function setStatus(secretKey, status) {
   const r = getRedis();

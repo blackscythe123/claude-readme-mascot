@@ -106,6 +106,24 @@ stored in **Upstash Redis** with a 5-minute TTL; `/mascot.svg?id=…` reads it.
 
 ---
 
+## Self-host
+
+The public demo server costs its owner per live ping, so it's **locked to the
+owner's key**. To run your own (free):
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/blackscythe123/claude-readme-mascot)
+
+1. Click **Deploy**, then add **Upstash Redis** from the project's Storage tab (injects `KV_REST_API_*`).
+2. Install the VS Code extension and set `claudeMascot.baseUrl` to your new URL.
+3. Generate a key in the extension panel → it shows your README embed.
+
+**Protect your free tier** — set the env var `ALLOWED_IDS` to your public id (shown
+in the extension panel). Then only your key can POST live status, and unknown
+`?id=` requests skip the database, so strangers embedding your domain can't burn
+your quota. Leave `ALLOWED_IDS` unset to keep the server open to anyone.
+
+---
+
 ## Roadmap
 
 **3D upgrade:** swap the SVG for pre-rendered Spline/Blender frames (APNG) via the

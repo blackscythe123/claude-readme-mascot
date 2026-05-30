@@ -2,7 +2,7 @@
   "name": "claude-coding-mascot",
   "displayName": "Claude Coding Mascot",
   "description": "Drive your GitHub README coding mascot live — flips to 'coding' while you type and 'idle' when you stop.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "blackscythe123",
   "license": "MIT",
   "icon": "icon.png",
@@ -16,9 +16,20 @@
   "activationEvents": ["onStartupFinished"],
   "main": "./extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        { "id": "claudeMascot", "title": "Claude Mascot", "icon": "media/icon.svg" }
+      ]
+    },
+    "views": {
+      "claudeMascot": [
+        { "id": "claudeMascot.panel", "name": "Mascot", "type": "webview" }
+      ]
+    },
     "commands": [
-      { "command": "claudeMascot.generateKey", "title": "Claude Mascot: Generate Key & Link" },
+      { "command": "claudeMascot.generateKey", "title": "Claude Mascot: Generate Key & Embed" },
       { "command": "claudeMascot.setKey", "title": "Claude Mascot: Set Key (paste existing)" },
+      { "command": "claudeMascot.copyEmbed", "title": "Claude Mascot: Copy README Embed" },
       { "command": "claudeMascot.showKey", "title": "Claude Mascot: Show Key" },
       { "command": "claudeMascot.unlink", "title": "Claude Mascot: Unlink (clear key)" }
     ],

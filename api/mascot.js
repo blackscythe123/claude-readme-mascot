@@ -5,7 +5,7 @@
 //   (also reachable as /mascot.svg via the rewrite in vercel.json)
 
 import { renderMascotSVG, resolveTheme } from "../src/mascot.js";
-import { getStatus } from "../src/store.js";
+import { getStatus, isAllowed } from "../src/store.js";
 
 export default async function handler(req, res) {
   const opts = resolveTheme(req.query || {});
@@ -15,7 +15,9 @@ export default async function handler(req, res) {
   let sinceMs = nowMs - opts.mins * 60000;
 
   const id = req.query && req.query.id;
-  if (id) {
+  // Only hit Redis for allowlisted ids; unknown ids on a private server get the
+  // cheap demo (no quota consumed by strangers embedding random ids).
+  if (id && isAllowed(String(id))) {
     try {
       const live = await getStatus(String(id));
       if (live) {
