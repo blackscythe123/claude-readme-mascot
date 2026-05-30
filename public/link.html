@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Link your IDE — Claude coding mascot</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>🔗 Link your IDE</h1>
+    <p>Your IDE sends a <strong>secret key</strong>; your README shows a <strong>public id</strong> derived from it (one-way), so nobody can spoof your status. Paste a key below to get your embed URL.</p>
+  </header>
+
+  <main class="layout">
+    <section class="controls">
+      <label>Secret key
+        <input type="text" id="key" placeholder="paste the key from the VS Code extension">
+      </label>
+      <button id="gen" type="button">Generate a key (for testing)</button>
+      <button id="go" type="button" style="background:var(--accent);color:#fff;border:0;">Get my embed URL</button>
+      <p id="err" style="color:#c0392b;font-size:13px;margin:0;"></p>
+      <p style="font-size:12px;color:var(--muted);margin:0;">Keep the <strong>key</strong> secret (it goes in your IDE). The <strong>id</strong> is public (it goes in your README). Multiple IDEs can use the same key.</p>
+    </section>
+
+    <section class="preview">
+      <div class="stage"><img id="out" alt="mascot preview" width="480" height="220"></div>
+
+      <div class="snippet">
+        <div class="snippet-head"><span>Public id</span><button data-copy="id" type="button">Copy</button></div>
+        <code id="id">—</code>
+      </div>
+      <div class="snippet">
+        <div class="snippet-head"><span>README markdown</span><button data-copy="md" type="button">Copy</button></div>
+        <code id="md">paste a key and press “Get my embed URL”</code>
+      </div>
+      <p style="font-size:13px;color:var(--muted);">Want to theme it? Take the URL to the <a href="/">playground</a> and add params like <code>&amp;theme=dark</code>.</p>
+    </section>
+  </main>
+
+  <script src="/link.js"></script>
+</body>
+</html>

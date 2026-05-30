@@ -1,65 +1,39 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="480" height="220" viewBox="0 0 480 220" role="img" aria-label="Claude is napping">
   <defs>
     <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#FFFDFB"/>
+      <stop offset="0" stop-color="#FBF3EC" stop-opacity="0.6"/>
       <stop offset="1" stop-color="#FBF3EC"/>
     </linearGradient>
-    <radialGradient id="body" cx="36%" cy="30%" r="75%">
-      <stop offset="0" stop-color="#F2A883"/>
-      <stop offset="0.55" stop-color="#D97757"/>
-      <stop offset="1" stop-color="#B85738"/>
-    </radialGradient>
     <radialGradient id="glow" cx="50%" cy="0%" r="80%">
-      <stop offset="0" stop-color="#D97757" stop-opacity="0.18"/>
-      <stop offset="1" stop-color="#D97757" stop-opacity="0"/>
+      <stop offset="0" stop-color="#C27C5C" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#C27C5C" stop-opacity="0"/>
     </radialGradient>
-    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="3.2"/>
-    </filter>
   </defs>
 
-  <rect x="3" y="3" width="474" height="214" rx="26" fill="url(#card)" stroke="#D97757" stroke-opacity="0.28" stroke-width="2"/>
+  <rect x="3" y="3" width="474" height="214" rx="26" fill="url(#card)" stroke="#C27C5C" stroke-opacity="0.3" stroke-width="2"/>
   <rect x="3" y="3" width="474" height="120" rx="26" fill="url(#glow)"/>
 
-  <!-- ground shadow (does not move with bob) -->
-  <ellipse cx="120" cy="180" rx="46" ry="9" fill="#B85738" opacity="0.22" filter="url(#soft)">
-    <animate attributeName="rx" values="46;40;46" dur="3.6s" repeatCount="indefinite"/>
-    <animate attributeName="opacity" values="0.22;0.14;0.22" dur="3.6s" repeatCount="indefinite"/>
-  </ellipse>
-
-  <!-- character -->
-  <g transform="translate(120 112)">
-    <g>
-      <animateTransform attributeName="transform" type="translate" values="0 0;0 3;0 0" dur="3.6s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1"/>
-      <ellipse cx="0" cy="0" rx="48" ry="50" fill="url(#body)"/>
-      <ellipse cx="-15" cy="-20" rx="20" ry="13" fill="#ffffff" opacity="0.28"/>
-      <ellipse cx="-32" cy="11" rx="6" ry="4" fill="#B85738" opacity="0.25"/>
-      <ellipse cx="32" cy="11" rx="6" ry="4" fill="#B85738" opacity="0.25"/>
-      
-      <path d="M-24,-2 q6,7 12,0" stroke="#3B2A22" stroke-width="3" stroke-linecap="round" fill="none"/>
-      <path d="M12,-2 q6,7 12,0" stroke="#3B2A22" stroke-width="3" stroke-linecap="round" fill="none"/>
-      <path d="M-6,16 q6,5 12,0" stroke="#3B2A22" stroke-width="3" stroke-linecap="round" fill="none"/>
-      
-      
-      <text x="26" y="-40" font-family="'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#B85738" opacity="0">z
-        <animate attributeName="opacity" values="0;0.9;0" dur="3s" repeatCount="indefinite"/>
-        <animateTransform attributeName="transform" type="translate" values="0 0;6 -10" dur="3s" repeatCount="indefinite"/>
-      </text>
-      <text x="38" y="-50" font-family="'Segoe UI', system-ui, sans-serif" font-size="17" font-weight="700" fill="#B85738" opacity="0">z
-        <animate attributeName="opacity" values="0;0.9;0" dur="3s" begin="0.7s" repeatCount="indefinite"/>
-        <animateTransform attributeName="transform" type="translate" values="0 0;7 -12" dur="3s" begin="0.7s" repeatCount="indefinite"/>
-      </text>
-      <text x="52" y="-62" font-family="'Segoe UI', system-ui, sans-serif" font-size="22" font-weight="700" fill="#B85738" opacity="0">Z
-        <animate attributeName="opacity" values="0;0.9;0" dur="3s" begin="1.4s" repeatCount="indefinite"/>
-        <animateTransform attributeName="transform" type="translate" values="0 0;9 -14" dur="3s" begin="1.4s" repeatCount="indefinite"/>
-      </text>
+  <g transform="translate(40 44)" shape-rendering="crispEdges">
+    
+    <ellipse cx="68" cy="98" rx="44" ry="7" fill="#000" opacity="0.14"/>
+    <g><animateTransform attributeName="transform" type="translate" values="0 0;0 2;0 0" dur="2.5s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.42 0 0.58 1;0.42 0 0.58 1"/>
+      <rect x="24" y="50" width="11" height="20" fill="#784d39"/>
+      <rect x="42" y="50" width="11" height="20" fill="#784d39"/>
+      <rect x="84" y="50" width="11" height="20" fill="#784d39"/>
+      <rect x="102" y="50" width="11" height="20" fill="#784d39"/>
+      <rect x="20" y="8" width="96" height="56" rx="3" fill="#C27C5C"/>
+      <rect x="18" y="14" width="100" height="8" fill="#C27C5C" opacity="0.85"/>
+      <rect x="40" y="36" width="14" height="3" fill="#1A1A1A"/>
+      <rect x="82" y="36" width="14" height="3" fill="#1A1A1A"/>
     </g>
+    <text x="118" y="20" font-family="'Segoe UI', system-ui, -apple-system, sans-serif" font-size="16" font-weight="700" fill="#818CF8" opacity="0">z<animate attributeName="opacity" values="0;1;0" dur="2.5s" repeatCount="indefinite"/><animateTransform attributeName="transform" type="translate" values="0 0;6 -16;12 -32" dur="2.5s" repeatCount="indefinite"/></text>
+    <text x="128" y="10" font-family="'Segoe UI', system-ui, -apple-system, sans-serif" font-size="13" font-weight="700" fill="#818CF8" opacity="0">z<animate attributeName="opacity" values="0;1;0" dur="2.5s" begin="0.6s" repeatCount="indefinite"/><animateTransform attributeName="transform" type="translate" values="0 0;6 -16;12 -32" dur="2.5s" begin="0.6s" repeatCount="indefinite"/></text>
+    <text x="138" y="0" font-family="'Segoe UI', system-ui, -apple-system, sans-serif" font-size="11" font-weight="700" fill="#818CF8" opacity="0">z<animate attributeName="opacity" values="0;1;0" dur="2.5s" begin="1.2s" repeatCount="indefinite"/><animateTransform attributeName="transform" type="translate" values="0 0;6 -16;12 -32" dur="2.5s" begin="1.2s" repeatCount="indefinite"/></text>
   </g>
 
-  <!-- status text -->
   <text x="250" y="92" font-family="'Segoe UI', system-ui, -apple-system, sans-serif" font-size="25" font-weight="700" fill="#2B2622">Claude is napping</text>
-  <text x="250" y="120" font-family="'Segoe UI', system-ui, -apple-system, sans-serif" font-size="15" fill="#8A817B">resting — idle for 8m</text>
-  <circle cx="258" cy="151" r="5" fill="none" stroke="#B9B2AC" stroke-width="2"/>
-  <text x="272" y="156" font-family="'Segoe UI', system-ui, -apple-system, sans-serif" font-size="14" font-weight="600" fill="#9A938D">○ idle</text>
-  <text x="250" y="192" font-family="'Segoe UI', system-ui, -apple-system, sans-serif" font-size="11" fill="#B9B2AC">powered by Claude · live on view</text>
+  <text x="250" y="120" font-family="'Segoe UI', system-ui, -apple-system, sans-serif" font-size="15" fill="#2B2622" fill-opacity="0.6">idle for 8m</text>
+  <circle cx="258" cy="151" r="5" fill="none" stroke="#2B2622" stroke-opacity="0.4" stroke-width="2"/>
+  <text x="272" y="156" font-family="'Segoe UI', system-ui, -apple-system, sans-serif" font-size="14" font-weight="600" fill="#2B2622" fill-opacity="0.55">○ idle</text>
+  <text x="250" y="192" font-family="'Segoe UI', system-ui, -apple-system, sans-serif" font-size="11" fill="#2B2622" fill-opacity="0.4">powered by Claude · live on view</text>
 </svg>

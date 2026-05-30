@@ -1,122 +1,115 @@
 # 🦀 Claude Coding Mascot
 
-A **live AI-coding mascot for your GitHub profile README**. When your AI agent
-(Claude Code, Codex, Gemini, …) is working, the mascot wakes up and codes. When
-you stop, it naps. The status updates whenever someone views your profile.
-
-> Nobody had built this — desktop AI-pets stay on the desktop, and README widgets
-> (WakaTime, GitCity) only show *historical* activity. This fills the gap by
-> combining the Discord/Spotify live-SVG-endpoint pattern with an AI-agent signal.
+A **coding-status mascot for your GitHub profile README**. Claude sits at a laptop
+and types (headband on, confetti when he's on a roll) when you're coding, and
+naps when you're idle — fully themeable via URL params, served from Vercel.
 
 ![coding](assets/preview-coding.svg)
 ![idle](assets/preview-idle.svg)
 
-*(The SVG above is the always-available placeholder. The real 3D mascot — your
-Spline/Blender render — drops in later with zero code changes; see [3D upgrade](#-the-3d-upgrade).)*
+> **Live now:** hosted endpoint + a config **playground** + a **VS Code extension**
+> that flips the mascot to *coding* / *idle* automatically while you work. Preview
+> any look with `?status=`, or wire it live with the extension + a `?id=` embed
+> (see [Go live](#go-live-vs-code)).
+
+It's all one animated **SVG** with **SMIL** animation — no JavaScript — so it
+plays inside a GitHub README `<img>`.
 
 ---
 
-## How it works
+## Customize it
 
+Everything is a URL query param on the SVG endpoint. Try the **playground** (the
+site root once deployed, or `vercel dev` locally) to configure it visually and
+copy the snippet. Or build the URL by hand:
+
+**Live:** playground → <https://pet-zeta-gules.vercel.app> · endpoint → `/mascot.svg`
+
+```md
+![coding status](https://pet-zeta-gules.vercel.app/mascot.svg?status=coding&theme=dark&hide_time=true)
 ```
- Claude Code hook ──POST /coding-now──►  ┌────────────────┐   GET /mascot(.svg|.png)
- (or manual button)                      │ Cloudflare     │ ◄─────────────────────────
- SessionEnd ──────POST /coding-stopped─► │ Worker + KV    │   embedded in your README
-                                         └────────────────┘
-```
 
-- **Signal** — a Claude Code `http` hook POSTs on session start / every turn / tool
-  use (heartbeat) and on `SessionEnd` (stop). A 5-minute TTL flips you to *idle*
-  if a session is killed without a clean exit. No hook? Use the manual button.
-- **State** — stored in Cloudflare KV (`{ status, tool, sinceMs, lastSeenMs }`).
-- **Render** — `GET /mascot` returns the mascot in the matching pose with
-  `Cache-Control: max-age=60`, so GitHub's camo proxy serves it ~1-min fresh.
+| Param | Type | Default | Notes |
+|---|---|---|---|
+| `status` | `coding` \| `idle` | `idle` | which scene to show (Phase 2: live) |
+| `theme` | `light` \| `dark` \| `terminal` \| `candy` | `light` | preset; individual colors below override it |
+| `body` | hex (no `#`) | theme | crab body color |
+| `accent` | hex | theme | headband / dot / glow / border |
+| `text` | hex | theme | title + text color |
+| `bg` | hex or `transparent` | theme | card background |
+| `font` | `system` \| `mono` \| `inter` \| `serif` | `system` | font family |
+| `label` | text | `Claude` | name shown ("X is coding") |
+| `hide_time` | bool | `false` | hide the elapsed `· 23m` |
+| `border` | bool | `true` | card border on/off |
+| `radius` | int 0–40 | `26` | card corner radius |
+| `mins` | int | `23` | demo elapsed minutes (Phase 1 only) |
 
-**The one honest limit:** README images only refresh when someone loads the page,
-and camo caches on the order of minutes. So "coding now / idle" works great — a
-live token-by-token counter would not. The *animation* is always smooth (it's
-self-contained in the image); only the *status* is minutes-fresh.
+Invalid values fall back to the default; text is sanitized; colors are validated
+hex. Bare hex (no `#`) keeps URLs clean — e.g. `body=10A37F`.
 
 ---
 
-## Run it locally (30 seconds)
+## Run locally
 
 ```bash
 npm install
-npm run preview          # writes assets/preview-*.svg — open one in a browser
-npm run dev              # starts the Worker at http://127.0.0.1:8787 (KV simulated)
+npm run preview     # writes assets/preview-*.svg — open one to eyeball the animation
+npm run dev         # vercel dev — playground at http://localhost:3000, SVG at /mascot.svg
 ```
 
-Then drive it:
-
-```bash
-./scripts/test.ps1                         # Windows / PowerShell
-./scripts/test.sh                          # macOS / Linux
-# or open public/manual-button.html in a browser and click the buttons
-```
-
-Watch `http://127.0.0.1:8787/mascot.svg` flip between coding ↔ idle.
+Open `http://localhost:3000/mascot.svg?status=coding&theme=terminal` to see params live.
 
 ---
 
-## Deploy
+## Deploy (Vercel)
 
 ```bash
-npx wrangler login
-npm run kv:create        # creates the KV namespaces — copy the printed ids
-# paste id + preview_id into wrangler.toml [[kv_namespaces]]
-npm run deploy           # -> https://claude-coding-mascot.<you>.workers.dev
+npm i -g vercel       # if you don't have it
+vercel login
+npm run deploy        # -> https://pet-zeta-gules.vercel.app
 ```
 
-Optional — lock down the POST endpoints:
-
-```bash
-npx wrangler secret put MASCOT_TOKEN      # then send Authorization: Bearer <token>
-```
-
----
-
-## Wire up Claude Code
-
-Copy the `hooks` block from [`hooks/claude-settings.sample.json`](hooks/claude-settings.sample.json)
-into your **`~/.claude/settings.json`** (global) or a project's `.claude/settings.json`.
-Replace `YOUR-WORKER` and `YOUR_TOKEN`. Restart Claude Code. Done — start a session
-and your README mascot starts coding.
-
-Other agents: any tool that can run a command on start/stop works — just
-`curl -X POST .../coding-now` and `.../coding-stopped`. Or rely on the manual button.
-
----
-
-## Put it in your README
+Then embed:
 
 ```md
-![coding status](https://claude-coding-mascot.<you>.workers.dev/mascot)
+![coding status](https://pet-zeta-gules.vercel.app/mascot.svg?status=coding)
 ```
 
-`/mascot` auto-serves the 3D APNG once you've uploaded frames, otherwise the SVG.
-Use `/mascot.svg` to force vector, `/mascot.png` to force the 3D render.
+GitHub serves README images through its camo proxy with ~minutes freshness, so
+the *status* is current as of the last profile view; the *animation* always plays.
 
 ---
 
-## 🎨 The 3D upgrade
+## Go live (VS Code)
 
-The placeholder is a hand-drawn animated SVG. To get the Codex-pet-grade 3D look,
-model the mascot in **Spline or Blender**, export PNG frame sequences, and drop them in:
+Make the mascot follow your *actual* coding — it flips to **coding** while you
+type and **idle** when you stop.
 
+1. Open the [`extension/`](extension) folder in VS Code and press **F5** (launches a
+   dev host), or package it: `cd extension && npx @vscode/vsce package` → *Install from VSIX…*.
+2. Run **Claude Mascot: Generate Key & Link** (or click the status-bar item). It
+   generates a secret key (kept in your IDE) and copies it to the clipboard.
+3. On the [link page](https://pet-zeta-gules.vercel.app/link.html), paste the key →
+   copy the `?id=…` README snippet into your GitHub profile.
+4. Code. The extension heartbeats `coding`; after ~5 idle minutes it goes `idle`.
+
+The README embed uses a **public id** = `sha256(key)`, so your secret key never
+appears publicly and nobody can spoof your status. Paste the same key into other
+editors to drive the one mascot from all of them.
+
+```md
+![coding status](https://pet-zeta-gules.vercel.app/mascot.svg?id=YOUR_PUBLIC_ID&theme=dark)
 ```
-assets/frames/idle/    frame_001.png frame_002.png ...
-assets/frames/coding/  frame_001.png frame_002.png ...
-```
 
-(Spec + tips in [`assets/frames/README.md`](assets/frames/README.md).) Then:
+How it stays live: the extension POSTs to `/api/coding-now` (Bearer key); state is
+stored in **Upstash Redis** with a 5-minute TTL; `/mascot.svg?id=…` reads it.
 
-```bash
-npm run build:frames     # frames -> dist/*.png (looping APNG)
-npm run upload:assets     # push into KV
-```
+---
 
-No code change — `/mascot.png` now serves your 3D mascot, SVG stays as fallback.
+## Roadmap
+
+**3D upgrade:** swap the SVG for pre-rendered Spline/Blender frames (APNG) via the
+`assets/frames/` pipeline (`npm run build:frames`).
 
 ---
 
@@ -124,15 +117,23 @@ No code change — `/mascot.png` now serves your 3D mascot, SVG stays as fallbac
 
 | Path | What |
 |---|---|
-| `src/worker.js` | Cloudflare Worker — routes, state, TTL |
-| `src/mascot.js` | placeholder mascot SVG (pure, state-aware) |
+| `src/mascot.js` | the mascot renderer — themeable, state-aware SVG (pure) |
+| `src/store.js` | Upstash Redis helpers + `sha256(key)` → public id |
+| `api/mascot.js` | SVG endpoint — live status by `?id=`, else `?status=` demo |
+| `api/coding-now.js` · `api/coding-stopped.js` | IDE pings (Bearer key) |
+| `api/link.js` | key → public id |
+| `public/` | playground (`index.html`) + IDE link page (`link.html`) |
+| `extension/` | the VS Code extension (key gen + activity → live signal) |
+| `vercel.json` | routes `/mascot.svg` → `/api/mascot` |
 | `scripts/preview.mjs` | emit static preview SVGs |
-| `scripts/build-apng.mjs` | 3D frames → APNG |
-| `scripts/upload-assets.mjs` | push APNGs into KV |
-| `hooks/claude-settings.sample.json` | Claude Code hook config |
-| `public/manual-button.html` | manual "I started / stopped" control |
 
-## Supported agents (mascot accent color)
+*(The Cloudflare Worker files `src/worker.js` / `wrangler.toml` are superseded by
+the Vercel functions and kept only for reference.)*
 
-`claude` · `codex` · `gemini` · `copilot` · `cursor` — pass `?tool=` on the POST,
-or `{"tool":"..."}` in the body. Defaults to `claude`.
+## Mascot & credits
+
+The mascot is the Claude crab, ported from
+[`clawd-react`](https://github.com/stevysmith/clawd-react) (MIT — see
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)). The headband + jump/confetti
+beat nods to the [Codrops Claude-mascot breakdown](https://tympanus.net/codrops/2026/05/05/reverse-engineering-claude-ais-mascot-animations-with-svg-and-gsap/).
+Claude-only by design.

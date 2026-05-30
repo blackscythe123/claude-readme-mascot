@@ -5,16 +5,18 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "dev": "vercel dev",
+    "deploy": "vercel deploy --prod",
     "preview": "node scripts/preview.mjs",
     "build:frames": "node scripts/build-apng.mjs",
-    "upload:assets": "node scripts/upload-assets.mjs",
-    "kv:create": "wrangler kv namespace create MASCOT_KV && wrangler kv namespace create MASCOT_KV --preview"
+    "upload:assets": "node scripts/upload-assets.mjs"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "pngjs": "^7.0.0",
-    "upng-js": "^2.1.0",
-    "wrangler": "^4.0.0"
+    "upng-js": "^2.1.0"
+  },
+  "dependencies": {
+    "@upstash/redis": "^1.38.0"
   }
 }

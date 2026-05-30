@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude coding mascot — playground</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>🦀 Claude coding mascot</h1>
+    <p>A live coding-status mascot for your GitHub README. Configure it below, copy the snippet, paste it in.</p>
+  </header>
+
+  <main class="layout">
+    <section class="controls" id="controls">
+      <label>Status
+        <select id="status">
+          <option value="coding" selected>coding</option>
+          <option value="idle">idle</option>
+        </select>
+      </label>
+
+      <label>Theme
+        <select id="theme">
+          <option value="light" selected>light</option>
+          <option value="dark">dark</option>
+          <option value="terminal">terminal</option>
+          <option value="candy">candy</option>
+        </select>
+      </label>
+
+      <label>Font
+        <select id="font">
+          <option value="system" selected>system</option>
+          <option value="mono">mono</option>
+          <option value="inter">inter</option>
+          <option value="serif">serif</option>
+        </select>
+      </label>
+
+      <label>Label <input type="text" id="label" value="Claude" maxlength="20"></label>
+
+      <div class="colors">
+        <label>Crab <input type="color" id="body" value="#C27C5C"></label>
+        <label>Accent <input type="color" id="accent" value="#C27C5C"></label>
+        <label>Text <input type="color" id="text" value="#2B2622"></label>
+        <label>Background <input type="color" id="bg" value="#FBF3EC"></label>
+      </div>
+
+      <label class="check"><input type="checkbox" id="transparent"> Transparent background</label>
+      <label class="check"><input type="checkbox" id="hide_time"> Hide elapsed time</label>
+      <label class="check"><input type="checkbox" id="border" checked> Card border</label>
+
+      <label>Corner radius <input type="range" id="radius" min="0" max="40" value="26"><span id="radiusVal">26</span></label>
+      <label>Minutes (demo elapsed) <input type="number" id="mins" min="0" max="600" value="23"></label>
+
+      <button id="reset" type="button">Reset to defaults</button>
+    </section>
+
+    <section class="preview">
+      <div class="stage"><img id="out" alt="mascot preview" width="480" height="220"></div>
+
+      <div class="snippet">
+        <div class="snippet-head"><span>Markdown</span><button data-copy="md" type="button">Copy</button></div>
+        <code id="md"></code>
+      </div>
+      <div class="snippet">
+        <div class="snippet-head"><span>HTML</span><button data-copy="html" type="button">Copy</button></div>
+        <code id="html"></code>
+      </div>
+      <div class="snippet">
+        <div class="snippet-head"><span>Direct URL</span><button data-copy="url" type="button">Copy</button></div>
+        <code id="url"></code>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Mascot is <strong>Claude</strong>, ported from <a href="https://github.com/stevysmith/clawd-react">clawd-react</a> (MIT). Animated with SMIL so it plays inside a README.</p>
+  </footer>
+
+  <script src="/playground.js"></script>
+</body>
+</html>
