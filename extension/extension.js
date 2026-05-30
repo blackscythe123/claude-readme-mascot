@@ -25,6 +25,7 @@ let lastActivity = 0;
 let lastCodingPost = 0;
 let codingSince = 0;
 let currentStatus = "idle";
+let mode = "auto"; // "auto" | "private" | "pinned" — persisted in globalState
 let locked = false;
 let warnedLocked = false;
 let timer = null;
@@ -64,9 +65,15 @@ function render() {
     } else if (locked) {
       statusBar.text = "$(lock) Claude: server private";
       statusBar.tooltip = "Deploy your own server and set claudeMascot.baseUrl";
+    } else if (mode === "private") {
+      statusBar.text = "$(eye-closed) Claude: private";
+      statusBar.tooltip = "Manual: private (hidden) — click to change mode";
+    } else if (mode === "pinned") {
+      statusBar.text = "$(pinned) Claude: pinned coding";
+      statusBar.tooltip = "Manual: pinned to coding while open — click to change mode";
     } else {
       statusBar.text = currentStatus === "coding" ? "$(pulse) Claude: coding" : "$(coffee) Claude: idle";
-      statusBar.tooltip = "Claude mascot — click for options";
+      statusBar.tooltip = "Auto — click for modes / options";
     }
   }
   updatePanel();
@@ -78,6 +85,7 @@ function updatePanel() {
     type: "state",
     hasKey: !!key,
     status: currentStatus,
+    mode,
     locked,
     baseUrl: baseUrl(),
     id: key ? publicId(key) : null,
@@ -91,6 +99,26 @@ function markActivity() { lastActivity = Date.now(); }
 async function tick() {
   if (!key) return;
   const now = Date.now();
+
+  // Private: stay idle (ignore typing).
+  if (mode === "private") {
+    if (currentStatus !== "idle") { await post("/api/coding-stopped"); currentStatus = "idle"; render(); }
+    return;
+  }
+  // Pinned: keep coding alive while VS Code is open (ignore typing). Normal TTL,
+  // so closing the laptop lets it expire to idle — no server-side persistence.
+  if (mode === "pinned") {
+    if (currentStatus !== "coding" || now - lastCodingPost > HEARTBEAT_MS) {
+      if (currentStatus !== "coding") codingSince = now;
+      const code = await post(`/api/coding-now?since=${codingSince}`);
+      if (code === 403) return setLocked(true);
+      if (code) setLocked(false);
+      lastCodingPost = now; currentStatus = "coding"; render();
+    }
+    return;
+  }
+
+  // Auto: activity-based.
   const active = now - lastActivity <= idleTimeoutMs();
   if (active) {
     if (currentStatus !== "coding") codingSince = now; // start of a new coding session
@@ -107,6 +135,25 @@ async function tick() {
     currentStatus = "idle";
     render();
   }
+}
+
+// Switch mode; persisted locally so the extension reopens in the same mode.
+async function setMode(m) {
+  mode = m;
+  await ctx.globalState.update("claudeMascot.mode", m);
+  if (m === "private") {
+    currentStatus = "idle";
+    await post("/api/coding-stopped");
+  } else if (m === "pinned") {
+    codingSince = Date.now(); lastCodingPost = Date.now(); currentStatus = "coding";
+    const code = await post(`/api/coding-now?since=${codingSince}`);
+    if (code === 403) { setLocked(true); return; }
+    if (code) setLocked(false);
+  } else {
+    markActivity();
+    return tick(); // re-evaluate now (tick calls render)
+  }
+  render();
 }
 
 async function generateKey() {
@@ -170,6 +217,9 @@ const panelProvider = {
     view.webview.html = panelHtml();
     view.webview.onDidReceiveMessage((m) => {
       switch (m && m.cmd) {
+        case "modeAuto": return setMode("auto");
+        case "modePrivate": return setMode("private");
+        case "modePinned": return setMode("pinned");
         case "generate": return generateKey();
         case "setKey": return setKey();
         case "copyEmbed": return copyEmbed();
@@ -204,6 +254,8 @@ function panelHtml() {
     white-space: pre-wrap; word-break: break-all; margin: 6px 0; }
   p { color: var(--vscode-descriptionForeground); line-height: 1.5; }
   .muted { font-size: 11px; color: var(--vscode-descriptionForeground); margin-top: 8px; }
+  .modes { display: flex; gap: 4px; margin: 0 0 8px; }
+  .modes button { margin: 0; padding: 6px 4px; }
 </style></head><body>
 <div id="app"></div>
 <script>
@@ -232,6 +284,11 @@ function panelHtml() {
       return;
     }
     app.innerHTML =
+      '<div class="modes">' +
+        '<button class="' + (s.mode === "auto" ? "" : "secondary") + '" data-cmd="modeAuto">🟢 Auto</button>' +
+        '<button class="' + (s.mode === "private" ? "" : "secondary") + '" data-cmd="modePrivate">🔒 Private</button>' +
+        '<button class="' + (s.mode === "pinned" ? "" : "secondary") + '" data-cmd="modePinned">📌 Pin</button>' +
+      "</div>" +
       '<span class="badge ' + (s.status === "coding" ? "coding" : "idle") + '">' + (s.status === "coding" ? "● coding" : "○ idle") + "</span>" +
       '<img id="m" src="' + img() + '">' +
       "<p>Paste this in your GitHub README:</p>" +
@@ -256,6 +313,7 @@ function panelHtml() {
 
 function activate(context) {
   ctx = context;
+  mode = context.globalState.get("claudeMascot.mode", "auto"); // resume last mode
   statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
   statusBar.command = "claudeMascot.menu";
   statusBar.show();
@@ -269,12 +327,23 @@ function activate(context) {
     vscode.commands.registerCommand("claudeMascot.showKey", showKey),
     vscode.commands.registerCommand("claudeMascot.unlink", unlink),
     vscode.commands.registerCommand("claudeMascot.menu", async () => {
-      const items = key ? ["Copy README embed", "Copy key (other laptops)", "Show key", "Set / change key", "Unlink"] : ["Generate key & embed", "Set key (paste)"];
-      const pick = await vscode.window.showQuickPick(items, { title: "Claude Coding Mascot" });
-      if (pick === "Generate key & embed") return generateKey();
+      if (!key) {
+        const p = await vscode.window.showQuickPick(["Generate key & embed", "Set key (paste)"], { title: "Claude Coding Mascot" });
+        if (p === "Generate key & embed") return generateKey();
+        if (p === "Set key (paste)") return setKey();
+        return;
+      }
+      const mk = (x) => (mode === x ? " ✓" : "");
+      const items = ["🟢 Auto" + mk("auto"), "🔒 Private" + mk("private"), "📌 Pin coding" + mk("pinned"),
+        "Copy README embed", "Copy key (other laptops)", "Show key", "Set / change key", "Unlink"];
+      const pick = await vscode.window.showQuickPick(items, { title: "Claude Coding Mascot — mode & options" });
+      if (!pick) return;
+      if (pick.startsWith("🟢")) return setMode("auto");
+      if (pick.startsWith("🔒")) return setMode("private");
+      if (pick.startsWith("📌")) return setMode("pinned");
       if (pick === "Copy README embed") return copyEmbed();
       if (pick === "Copy key (other laptops)") return copyKey();
-      if (pick === "Set key (paste)" || pick === "Set / change key") return setKey();
+      if (pick === "Set / change key") return setKey();
       if (pick === "Show key") return showKey();
       if (pick === "Unlink") return unlink();
     }),
@@ -290,7 +359,11 @@ function activate(context) {
   context.secrets.get(SECRET_KEY).then((k) => {
     key = k || null;
     render();
-    if (key) { markActivity(); tick(); }
+    if (!key) return;
+    if (mode === "private") { currentStatus = "idle"; post("/api/coding-stopped"); }
+    else if (mode === "pinned") { codingSince = Date.now(); lastCodingPost = Date.now(); currentStatus = "coding"; post(`/api/coding-now?since=${codingSince}`); }
+    else { markActivity(); tick(); }
+    render();
   });
 }
 
