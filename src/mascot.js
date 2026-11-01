@@ -121,9 +121,10 @@ export function resolveTheme(q = {}) {
 // swapped in. Dark-ish presets get the dark card, the rest the light one.
 // The colour cycle (150 s, 30 palettes) starts when the image finishes loading, so a
 // heavy card starts it later than the light cards around it. Measured on a GitHub
-// profile: ~0.6 s behind. The cycle is pulled forward by that, plus the time this
-// request spent on the server (`lagSec`), so every card stays in step.
-const LOAD_LAG_SEC = 0.6;
+// profile: 0.05-0.65 s behind depending on load order, so we aim for the middle.
+// The cycle is pulled forward by that, plus the time this request spent on the
+// server (`lagSec`), so every card stays in step.
+const LOAD_LAG_SEC = 0.3;
 
 function renderBloubSVG(t) {
   const mode = t.theme === "dark" || t.theme === "terminal" ? "dark" : "light";
