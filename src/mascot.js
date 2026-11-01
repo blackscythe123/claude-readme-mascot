@@ -126,6 +126,13 @@ export function resolveTheme(q = {}) {
 // server (`lagSec`), so every card stays in step.
 const LOAD_LAG_SEC = 0.3;
 
+// Per-visitor starting palette, the same rule as every other card service: all cards of
+// one page load start on the palette of the current minute (30 palettes, 5 s each).
+const PALETTE_COUNT = 30;
+function startOffsetSec(now = Date.now()) {
+  return (Math.floor(now / 60000) % PALETTE_COUNT) * (150 / PALETTE_COUNT);
+}
+
 // A README image is fetched once and never asks again, so the server can't push a new
 // number into an open page. Instead the card carries the next few hours of its own
 // count: one line per minute, each switched on by the SVG clock (`<set>`) exactly when
@@ -157,7 +164,7 @@ function renderBloubSVG(t) {
   const mode = t.theme === "dark" || t.theme === "terminal" ? "dark" : "light";
   const card = BLOUB_CARDS[t.status === "coding" ? "coding" : "idle"][mode];
   const label = esc(t.label);
-  const lag = (LOAD_LAG_SEC + Math.max(0, Number(t.lagSec) || 0)).toFixed(2);
+  const lag = (LOAD_LAG_SEC + Math.max(0, Number(t.lagSec) || 0) + startOffsetSec()).toFixed(2);
   const coding = t.status === "coding";
   const muted = mode === "dark" ? "#9a95a8" : "#5f596c";
   // a live card with no known start time (status expired long ago) shows no number
