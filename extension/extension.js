@@ -14,7 +14,7 @@ const crypto = require("crypto");
 
 const SECRET_KEY = "claudeMascot.key";
 const TICK_MS = 30000;
-const HEARTBEAT_MS = 600000; // refresh while coding at most every 10 min (< 15-min TTL)
+const HEARTBEAT_MS = 300000; // refresh while coding every 5 min: one missed beat still fits the 15-min TTL
 const DEPLOY_URL = "https://vercel.com/new/clone?repository-url=https://github.com/blackscythe123/claude-readme-mascot&project-name=claude-coding-mascot&repository-name=claude-coding-mascot&stores=%5B%7B%22type%22%3A%22kv%22%7D%5D";
 
 let ctx;
@@ -29,6 +29,11 @@ let mode = "auto"; // "auto" | "private" | "pinned" — persisted in globalState
 let locked = false;
 let warnedLocked = false;
 let timer = null;
+let lastTick = 0;
+// One id per editor window: the server keeps each window's status apart, so a
+// window going idle or closing can't overwrite another one that is coding.
+const SESSION = (crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString("hex")).replace(/[^A-Za-z0-9_-]/g, "");
+const ok = (code) => code >= 200 && code < 300;
 
 function cfg() { return vscode.workspace.getConfiguration("claudeMascot"); }
 function baseUrl() { return String(cfg().get("baseUrl") || "").replace(/\/+$/, ""); }
@@ -38,10 +43,12 @@ function publicId(k) { return crypto.createHash("sha256").update(String(k)).dige
 function embedUrl() { return key ? `${baseUrl()}/mascot.svg?id=${publicId(key)}` : ""; }
 function embedMarkdown() { return key ? `![coding status](${embedUrl()})` : ""; }
 
+function withSession(path) { return path + (path.includes("?") ? "&" : "?") + "session=" + SESSION; }
+
 async function post(path) {
   if (!key || typeof fetch !== "function") return null;
   try {
-    const r = await fetch(baseUrl() + path, { method: "POST", headers: { authorization: "Bearer " + key } });
+    const r = await fetch(baseUrl() + withSession(path), { method: "POST", headers: { authorization: "Bearer " + key } });
     return r.status;
   } catch { return null; }
 }
@@ -99,10 +106,20 @@ function markActivity() { lastActivity = Date.now(); }
 async function tick() {
   if (!key) return;
   const now = Date.now();
+  // Another window may have changed the mode: follow it, and re-send right away.
+  const shared = ctx.globalState.get("claudeMascot.mode", mode);
+  if (shared !== mode) { mode = shared; currentStatus = "unknown"; lastCodingPost = 0; }
+  // A long gap between ticks means the laptop slept: the server entry has likely
+  // expired, so re-send now instead of waiting for the next heartbeat.
+  if (lastTick && now - lastTick > 2 * TICK_MS) lastCodingPost = 0;
+  lastTick = now;
 
   // Private: stay idle (ignore typing).
   if (mode === "private") {
-    if (currentStatus !== "idle") { await post("/api/coding-stopped"); currentStatus = "idle"; render(); }
+    if (currentStatus !== "idle") {
+      const code = await post("/api/coding-stopped");
+      if (ok(code)) { currentStatus = "idle"; render(); } // otherwise retry next tick
+    }
     return;
   }
   // Pinned: keep coding alive while VS Code is open (ignore typing). Normal TTL,
@@ -113,7 +130,8 @@ async function tick() {
       const code = await post(`/api/coding-now?since=${codingSince}`);
       if (code === 403) return setLocked(true);
       if (code) setLocked(false);
-      lastCodingPost = now; currentStatus = "coding"; render();
+      // only a confirmed write counts: a failure (offline, waking up, 5xx) retries next tick
+      if (ok(code)) { lastCodingPost = now; currentStatus = "coding"; render(); }
     }
     return;
   }
@@ -126,14 +144,18 @@ async function tick() {
       const code = await post(`/api/coding-now?since=${codingSince}`);
       if (code === 403) return setLocked(true);
       if (code) setLocked(false);
-      lastCodingPost = now;
-      currentStatus = "coding";
-      render();
+      if (ok(code)) {
+        lastCodingPost = now;
+        currentStatus = "coding";
+        render();
+      }
     }
   } else if (currentStatus !== "idle") {
-    await post("/api/coding-stopped");
-    currentStatus = "idle";
-    render();
+    const code = await post("/api/coding-stopped");
+    if (ok(code)) {
+      currentStatus = "idle";
+      render();
+    }
   }
 }
 
@@ -141,14 +163,11 @@ async function tick() {
 async function setMode(m) {
   mode = m;
   await ctx.globalState.update("claudeMascot.mode", m);
-  if (m === "private") {
-    currentStatus = "idle";
-    await post("/api/coding-stopped");
-  } else if (m === "pinned") {
-    codingSince = Date.now(); lastCodingPost = Date.now(); currentStatus = "coding";
-    const code = await post(`/api/coding-now?since=${codingSince}`);
-    if (code === 403) { setLocked(true); return; }
-    if (code) setLocked(false);
+  if (m === "private" || m === "pinned") {
+    if (m === "pinned") codingSince = Date.now();
+    currentStatus = "unknown";
+    lastCodingPost = 0;
+    return tick(); // writes now, and keeps retrying every tick until it succeeds
   } else {
     markActivity();
     return tick(); // re-evaluate now (tick calls render)
@@ -360,8 +379,8 @@ function activate(context) {
     key = k || null;
     render();
     if (!key) return;
-    if (mode === "private") { currentStatus = "idle"; post("/api/coding-stopped"); }
-    else if (mode === "pinned") { codingSince = Date.now(); lastCodingPost = Date.now(); currentStatus = "coding"; post(`/api/coding-now?since=${codingSince}`); }
+    if (mode === "pinned") codingSince = Date.now();
+    if (mode === "private" || mode === "pinned") { currentStatus = "unknown"; lastCodingPost = 0; tick(); }
     else { markActivity(); tick(); }
     render();
   });
@@ -369,7 +388,8 @@ function activate(context) {
 
 async function deactivate() {
   if (key && typeof fetch === "function") {
-    try { await fetch(baseUrl() + "/api/coding-stopped", { method: "POST", headers: { authorization: "Bearer " + key } }); } catch {}
+    // only this window's session goes idle; other open windows keep their own status
+    try { await fetch(baseUrl() + withSession("/api/coding-stopped"), { method: "POST", headers: { authorization: "Bearer " + key } }); } catch {}
   }
 }
 
