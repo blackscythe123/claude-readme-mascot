@@ -10,6 +10,7 @@ import { getStatus, isAllowed } from "../src/store.js";
 export default async function handler(req, res) {
   const opts = resolveTheme(req.query || {});
   const nowMs = Date.now();
+  const startedMs = nowMs; // server time is part of the colour-sync correction
 
   let status = opts.status;
   let sinceMs = nowMs - opts.mins * 60000;
@@ -27,7 +28,7 @@ export default async function handler(req, res) {
     } catch { /* store unavailable → fall back to demo status */ }
   }
 
-  const svg = renderMascotSVG({ ...opts, status, nowMs, sinceMs });
+  const svg = renderMascotSVG({ ...opts, status, nowMs, sinceMs, lagSec: (Date.now() - startedMs) / 1000 });
 
   res.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
   // live (id) changes often → short cache; demo can cache a bit longer

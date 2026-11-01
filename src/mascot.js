@@ -119,13 +119,21 @@ export function resolveTheme(q = {}) {
 // ---------- bloub (default style) ----------
 // The cards are fixed 360x130 art with their own palette animation; only the label is
 // swapped in. Dark-ish presets get the dark card, the rest the light one.
+// The colour cycle (150 s, 30 palettes) starts when the image finishes loading, so a
+// heavy card starts it later than the light cards around it. Measured on a GitHub
+// profile: ~0.6 s behind. The cycle is pulled forward by that, plus the time this
+// request spent on the server (`lagSec`), so every card stays in step.
+const LOAD_LAG_SEC = 0.6;
+
 function renderBloubSVG(t) {
   const mode = t.theme === "dark" || t.theme === "terminal" ? "dark" : "light";
   const card = BLOUB_CARDS[t.status === "coding" ? "coding" : "idle"][mode];
   const label = esc(t.label);
+  const lag = (LOAD_LAG_SEC + Math.max(0, Number(t.lagSec) || 0)).toFixed(2);
   return card
     .split("BLACKSCYTHE123").join(label.toUpperCase())
-    .split("blackscythe123").join(label);
+    .split("blackscythe123").join(label)
+    .replace("</style>", `.dyn-fill,.dyn-stroke{animation-delay:-${lag}s}</style>`);
 }
 
 // ---------- renderer ----------
