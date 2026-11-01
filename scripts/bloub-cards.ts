@@ -1,12 +1,13 @@
 /**
  * Bloub cards: coding, sleeping and spotify-offline, dark + light, 360 x 130.
+ * Read AGENTS.md first: it explains every technique used here.
  *
- * This drives the Bloub engine (https://github.com/jeremy-prt/bloub, MIT), so it runs from
- * inside a bloub checkout:
+ *   npx tsx studio/bloub-cards.ts                    # -> output/*.svg
+ *   OUT=some/dir PALETTES=my-palettes.json npx tsx studio/bloub-cards.ts
  *
- *   cp scripts/bloub-cards.ts <bloub>/studio/
- *   cd <bloub> && OUT=<this repo>/assets/bloub PALETTES=<palettes.json> npx tsx studio/bloub-cards.ts
- *   cd <this repo> && node scripts/build-bloub.mjs     # bundles assets/bloub into src/bloub-cards.js
+ * Live copies: the coding/sleeping cards are served by github.com/blackscythe123/claude-readme-mascot
+ * (assets/bloub, bundled by its scripts/build-bloub.mjs); the spotify-offline card by
+ * github.com/blackscythe123/readme-typing-svg (src/templates/offline-mascot-*.svg).
  *
  * The face is the real engine: `engine.sample(t)` is a pure function of time, so expressions
  * and gaze targets are cued like a timeline, sampled at FPS and baked into SMIL path morphs.
@@ -25,7 +26,7 @@ import { unionOfCirclesProfile } from '../src/bot/shape'
 
 const OUT = process.env.OUT ?? 'output'
 const PALETTES: Array<Record<string, string>> = JSON.parse(
-  fs.readFileSync(process.env.PALETTES ?? '../readme-typing-svg/palettes.json', 'utf8')
+  fs.readFileSync(process.env.PALETTES ?? 'studio/palettes.json', 'utf8')
 )
 const FPS = 18
 const W = 360
@@ -512,18 +513,34 @@ const mFoot = proj(MASCOT_WORLD)
 const M_BASE = { x: mFoot.x, y: mFoot.y - BODY_BOTTOM * MS }
 
 // ================================================================= CODING
+/**
+ * The coding card, 12 s seamless loop:
+ *   in the zone (tongue out, typing) -> hmm (pout, looks up, "?") -> EUREKA (star eyes,
+ *   sparkles, frantic typing) -> it compiled!! (big jump + bounce, happy arcs, grin, confetti,
+ *   tick) -> nailed it (wink, wiggle) -> shipping it (typing with a grin, head bobs).
+ * Every face stays round and upright: no mirrored eye tilts (they read as evil).
+ */
 function codingCard(th: Theme) {
   const D = 12
   const ts = times(D)
+  const o: AnimOpts = { dur: D, loop: true }
+  // beats
+  const HMM_A = 3.3
+  const EUREKA_A = 4.55
+  const JUMP_A = 6.55
+  const JUMP_B = 7.25
+  const BOUNCE_B = 7.62
+  const WINK_A = 8.4
+  const SHIP_A = 9.2
   const typing = (t: number) =>
-    Math.max(env(t, -1, 3.35, 0.3), env(t, 4.55, 6.55, 0.2), env(t, 8.6, 13, 0.3)) // on over the seam
-  const burst = (t: number) => env(t, 4.55, 6.55, 0.2)
+    Math.max(env(t, -1, HMM_A + 0.05, 0.3), env(t, EUREKA_A, JUMP_A, 0.15), env(t, SHIP_A, 13, 0.3)) // on over the seam
+  const burst = (t: number) => env(t, EUREKA_A, JUMP_A, 0.15)
   const cues: Cue[] = [
     { t: -6, expr: expr('attentif'), look: AT_SCREEN },
-    { t: 3.3, expr: expr('curieux'), look: look(24, 26, 0.7), lookMorph: 0.5 },
-    { t: 4.5, expr: expr('excite'), look: look(-22, -10, 0.2), lookMorph: 0.25 },
-    { t: 6.7, expr: expr('heureux'), look: AT_VIEWER, lookMorph: 0.4 },
-    { t: 8.6, expr: expr('attentif'), look: AT_SCREEN, lookMorph: 0.45 }
+    { t: HMM_A, expr: expr('attentif'), look: look(24, 22, 0.6), lookMorph: 0.45 },
+    { t: EUREKA_A, expr: expr('attentif'), look: look(-20, -10, 0.2), lookMorph: 0.2 },
+    { t: JUMP_A, expr: expr('attentif'), look: AT_VIEWER, lookMorph: 0.3 },
+    { t: SHIP_A, expr: expr('attentif'), look: AT_SCREEN, lookMorph: 0.45 }
   ]
   const eyes = sampleEyes(cues, D, 0.6)
 
@@ -531,87 +548,216 @@ function codingCard(th: Theme) {
   const F = 4.25 // typing bobs per second; F * D is an integer, so the loop is seamless
   const pose = ts.map((t) => {
     const ty = typing(t)
-    const b = Math.abs(Math.sin(Math.PI * (F + 1.75 * burst(t)) * t))
-    let dy = -b * 1.6 * ty
-    let rot = -3.5 * ty
-    let sx = 1 + 0.012 * b * ty
-    let sy = 1 - 0.022 * b * ty
-    // thinking: lean back, head tilt
-    const think = env(t, 3.3, 4.6, 0.35)
-    rot += 7 * think
-    dy -= 2 * think
-    // success hop: anticipation -> jump -> land squash -> settle
-    const ant = bump(t, 6.5, 6.75)
-    sy -= 0.1 * ant
-    sx += 0.07 * ant
-    if (t > 6.75 && t < 7.2) dy -= 13 * Math.sin(((t - 6.75) / 0.45) * Math.PI)
-    const land = bump(t, 7.2, 7.42)
-    sy -= 0.12 * land
-    sx += 0.09 * land
-    sy += 0.05 * bump(t, 6.8, 7.1)
-    sx -= 0.04 * bump(t, 6.8, 7.1)
+    const fast = burst(t)
+    const b = Math.abs(Math.sin(Math.PI * (F + 2.25 * fast) * t))
+    let dy = -b * (1.6 + 2.4 * fast) * ty
+    let rot = -3.5 * ty + 3 * Math.sin(t * Math.PI * 2 * 2.125) * fast // frantic wobble
+    let sx = 1 + (0.012 + 0.03 * fast) * b * ty
+    let sy = 1 - (0.022 + 0.05 * fast) * b * ty
+    // shipping: head bobs to the rhythm
+    const ship = env(t, SHIP_A, 11.7, 0.3)
+    rot += 4 * Math.sin(t * Math.PI * 2 * 1.0625) * ship
+    // hmm: leans back, tilts
+    const think = env(t, HMM_A, EUREKA_A, 0.3)
+    rot += 8 * think
+    dy -= 2.5 * think
+    // eureka jolt
+    const jolt = bump(t, EUREKA_A, EUREKA_A + 0.3)
+    dy -= 7 * jolt
+    sy += 0.08 * jolt
+    // it compiled: crouch -> BIG jump -> squash -> happy bounce -> squash
+    const ant = bump(t, JUMP_A - 0.2, JUMP_A + 0.05)
+    sy -= 0.14 * ant
+    sx += 0.1 * ant
+    if (t > JUMP_A + 0.05 && t < JUMP_B) {
+      const u = (t - JUMP_A - 0.05) / (JUMP_B - JUMP_A - 0.05)
+      dy -= 19 * Math.sin(u * Math.PI)
+      sy += 0.1 * Math.sin(u * Math.PI)
+      sx -= 0.07 * Math.sin(u * Math.PI)
+    }
+    const land1 = bump(t, JUMP_B, JUMP_B + 0.12)
+    sy -= 0.15 * land1
+    sx += 0.11 * land1
+    if (t > JUMP_B + 0.1 && t < BOUNCE_B) dy -= 7 * Math.sin(((t - JUMP_B - 0.1) / (BOUNCE_B - JUMP_B - 0.1)) * Math.PI)
+    const land2 = bump(t, BOUNCE_B, BOUNCE_B + 0.15)
+    sy -= 0.08 * land2
+    sx += 0.06 * land2
+    // nailed it: a happy side-to-side wiggle
+    const wig = env(t, WINK_A, SHIP_A, 0.15)
+    rot += 7 * Math.sin((t - WINK_A) * Math.PI * 2 * 2.5) * wig
     return { dy, rot, sx, sy }
   })
-  const o: AnimOpts = { dur: D, loop: true }
   const tr = anim('animateTransform', 'transform', pose.map((p) => `0 ${n1(p.dy)}`), o, 'translate')
   const rt = anim('animateTransform', 'transform', pose.map((p) => `${n1(p.rot)} 0 ${n1(BODY_BOTTOM * MS)}`), o, 'rotate')
   const sc = anim('animateTransform', 'transform', pose.map((p) => `${n2(p.sx)} ${n2(p.sy)}`), o, 'scale')
   const hopShadow =
     anim('animate', 'rx', pose.map((p) => n1(30 + p.dy * 0.9)), o) +
-    anim('animate', 'opacity', pose.map((p) => n2(th.shadow * (1 + p.dy / 30))), o)
+    anim('animate', 'opacity', pose.map((p) => n2(th.shadow * clamp(1 + p.dy / 30))), o)
 
   // ---- screen light flicker: brighter while typing, flash on success
   const glow = ts.map((t) => {
     const base = 0.55 + 0.25 * typing(t)
-    const fl = 0.12 * Math.sin(t * 23.1) * Math.sin(t * 7.7) * typing(t)
-    return clamp(base + fl + 0.35 * bump(t, 6.7, 7.6))
+    const fl = (0.12 + 0.1 * burst(t)) * Math.sin(t * 23.1) * Math.sin(t * 7.7) * typing(t)
+    return clamp(base + fl + 0.4 * bump(t, JUMP_A + 0.1, JUMP_A + 1.0))
   })
   const glowAnim = anim('animate', 'opacity', glow.map((g) => n2(g * 0.75)), o)
   const bodyLit = anim('animate', 'opacity', glow.map((g) => n2(g)), o)
 
-  // ---- paws on the deck, alternating taps
+  // ---- face extras, body-local units, following the eyes every frame
+  const faceAt = (i: number) => {
+    const c = eyes[i]!.centers
+    return { x: (c[0]!.x + c[1]!.x) / 2 + 2, y: (c[0]!.y + c[1]!.y) / 2 + 26 }
+  }
+  const mouthParams = (t: number) => {
+    // base: concentration, a small "o" with the tongue tip out
+    let smile = 0.2
+    let open = 0.55
+    let w = 5
+    const hmm = env(t, HMM_A, EUREKA_A, 0.25)
+    smile = lerp(smile, -0.45, hmm)
+    open = lerp(open, 0, hmm)
+    const eur = env(t, EUREKA_A, JUMP_A, 0.15)
+    smile = lerp(smile, 0.7, eur)
+    open = lerp(open, 0.6 + 0.25 * Math.abs(Math.sin(t * Math.PI * 4)), eur)
+    w = lerp(w, 8, eur)
+    const win = env(t, JUMP_A, WINK_A, 0.15)
+    smile = lerp(smile, 1, win)
+    open = lerp(open, 0.8, win)
+    w = lerp(w, 10, win)
+    const nail = env(t, WINK_A, SHIP_A, 0.15)
+    smile = lerp(smile, 1, nail)
+    open = lerp(open, 0.35, nail)
+    w = lerp(w, 8, nail)
+    const ship = env(t, SHIP_A, 11.6, 0.35)
+    smile = lerp(smile, 0.85, ship)
+    open = lerp(open, 0.15, ship)
+    w = lerp(w, 7.5, ship)
+    return { smile, open, w }
+  }
+  const mouthD = ts.map((t, i) => {
+    const { x: mx, y: my } = faceAt(i)
+    const { smile, open, w } = mouthParams(t)
+    const y0 = my - smile * 3.5
+    const top = my + smile * 4.5
+    const bot = top + open * 24
+    return `M${n1(mx - w)} ${n1(y0)}C${n1(mx - w * 0.45)} ${n1(top)} ${n1(mx + w * 0.45)} ${n1(top)} ${n1(mx + w)} ${n1(y0)}C${n1(mx + w * 0.95)} ${n1(bot)} ${n1(mx - w * 0.95)} ${n1(bot)} ${n1(mx - w)} ${n1(y0)}Z`
+  })
+  const tongue = ts.map((t, i) => {
+    const { open, w } = mouthParams(t)
+    const f = faceAt(i)
+    // the tongue tip pokes out while concentrating, and shows inside big grins
+    const poke = env(t, -1, HMM_A, 0.2) + env(t, 11.6, 13, 0.3)
+    return {
+      cx: n1(f.x + 2),
+      cy: n1(f.y + 7 + open * 9 + 3 * poke),
+      rx: n1(Math.max(w * 0.7, 4)),
+      ry: n1(Math.max(clamp((open - 0.4) / 0.5) * 7, 4.5 * clamp(poke)))
+    }
+  })
+  const mouth = `<clipPath id="mouthClip"><path d="${mouthD[0]}">${anim('animate', 'd', mouthD, o)}</path></clipPath>
+<path d="${mouthD[0]}" fill="${th.mode === 'dark' ? '#3a1427' : th.ink}" stroke="${th.ink}" stroke-width="5" stroke-linejoin="round">${anim('animate', 'd', mouthD, o)}</path>
+<g clip-path="url(#mouthClip)"><ellipse cx="${tongue[0]!.cx}" cy="${tongue[0]!.cy}" rx="${tongue[0]!.rx}" ry="${tongue[0]!.ry}" fill="#ff8da1">${anim('animate', 'cx', tongue.map((v) => v.cx), o)}${anim('animate', 'cy', tongue.map((v) => v.cy), o)}${anim('animate', 'rx', tongue.map((v) => v.rx), o)}${anim('animate', 'ry', tongue.map((v) => v.ry), o)}</ellipse></g>`
+
+  // eyes: engine eyes, round "∩" happy arcs and star eyes for the eureka, cross-faded per eye
+  const starW = ts.map((t) => env(t, EUREKA_A + 0.05, JUMP_A, 0.12))
+  const happyW = [0, 1].map((e) =>
+    ts.map((t) => Math.max(env(t, JUMP_A + 0.1, WINK_A + 0.05, 0.12), e === 1 ? env(t, WINK_A - 0.05, SHIP_A, 0.12) : 0))
+  )
+  const level = (s: (typeof eyes)[number]) => (s.centers[0]!.y + s.centers[1]!.y) / 2
+  const arcD = (e: number) =>
+    eyes.map((s) => {
+      const c = s.centers[e]!
+      const y = level(s)
+      return `M${n1(c.x - 10)} ${n1(y + 5)}C${n1(c.x - 10)} ${n1(y - 7.5)} ${n1(c.x + 10)} ${n1(y - 7.5)} ${n1(c.x + 10)} ${n1(y + 5)}`
+    })
+  const starD = (e: number) =>
+    eyes.map((s, i) => {
+      const c = s.centers[e]!
+      const y = level(s)
+      const r = 14 * (1 + 0.12 * Math.sin(ts[i]! * Math.PI * 6)) // twinkle
+      let d = ''
+      for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * Math.PI * 2 - Math.PI / 2
+        const rr = k % 2 ? r * 0.32 : r
+        d += (k ? 'L' : 'M') + n1(c.x + Math.cos(a) * rr) + ' ' + n1(y + Math.sin(a) * rr)
+      }
+      return d + 'Z'
+    })
+  const layer = (d: string[], w: number[], paint: string) => {
+    const op = w.map((v) => n2(v))
+    return `<path d="${d[0]}" ${paint} opacity="${op[0]}">${anim('animate', 'd', d, o)}${anim('animate', 'opacity', op, o)}</path>`
+  }
+  const arcs = [0, 1]
+    .map(
+      (e) =>
+        layer(arcD(e), happyW[e]!, `fill="none" stroke="${th.ink}" stroke-width="6.5" stroke-linecap="round"`) +
+        layer(starD(e), starW, `fill="${th.ink}" stroke="${th.ink}" stroke-width="2" stroke-linejoin="round"`)
+    )
+    .join('')
+  const eyesSvg = [0, 1]
+    .map((e) => {
+      const op = ts.map((_, i) => n2(1 - Math.max(happyW[e]![i]!, starW[i]!)))
+      let g = `<g opacity="${op[0]}">${anim('animate', 'opacity', op, o)}<path d="${eyes[0]!.d[e]}" fill="${th.ink}">${anim('animate', 'd', eyes.map((x) => x.d[e]!), o)}</path>`
+      if (th.spec) {
+        const sp = eyes.map((x) => x.spec[e]!)
+        g += `<circle cx="${n1(sp[0]!.x)}" cy="${n1(sp[0]!.y)}" r="${n1(sp[0]!.r)}" fill="${th.spec}" opacity=".9">${anim('animate', 'cx', sp.map((q) => n1(q.x)), o)}${anim('animate', 'cy', sp.map((q) => n1(q.y)), o)}${anim('animate', 'r', sp.map((q) => n1(q.r)), o)}</circle>`
+      }
+      return g + '</g>'
+    })
+    .join('')
+
+  // ---- paws on the deck: alternating taps, frantic during the eureka, lifted on the jump
   const paw = (side: number, x: number) => {
     const p = proj([x, LT, -LD / 2 + 9])
-    const vals = ts.map((t) => {
-      const ph = Math.sin(Math.PI * 2 * (F + 1.75 * burst(t)) * 0.5 * t + side * Math.PI)
-      return `0 ${n1(-Math.max(0, ph) * 2.6 * typing(t))}`
+    const vals = ts.map((t, i) => {
+      const ph = Math.sin(Math.PI * 2 * (F + 2.25 * burst(t)) * 0.5 * t + side * Math.PI)
+      const cheer = env(t, JUMP_A, WINK_A, 0.15)
+      return `0 ${n1(-Math.max(0, ph) * (2.6 + 1.6 * burst(t)) * typing(t) + pose[i]!.dy * 0.9 * cheer - 8 * cheer)}`
     })
     return `<g transform="translate(${n1(p.x)} ${n1(p.y)})"><g>${anim('animateTransform', 'transform', vals, o, 'translate')}<ellipse rx="6" ry="4.2" fill="${palCol(th)}" class="dyn-fill"/><ellipse rx="6" ry="4.2" fill="url(#vol)"/></g></g>`
   }
 
-  // ---- code glyphs drifting up off the screen while typing
+  // ---- floating stuff: code glyphs while typing, ?, sparkles, confetti
   const glyphs = ['{ }', '&lt;/&gt;', '=&gt;', ';', '( )', '[ ]', '&amp;&amp;', '#', '++', '//']
-  const spawns: number[] = []
-  for (let t = 0.2; t < D - 0.8; t += 0.42) if (typing(t) > 0.6) spawns.push(t)
   const lidTopL = proj(lidCorners(0)[1]!)
   const lidTopR = proj(lidCorners(0)[0]!)
   let rng = 7
   const rnd = () => ((rng = (rng * 16807) % 2147483647) / 2147483647)
-  const particles = spawns
-    .map((t0, i) => {
-      const life = 1.7
-      const u = 0.15 + rnd() * 0.75
-      const x0 = lerp(lidTopL.x, lidTopR.x, u)
-      const y0 = lerp(lidTopL.y, lidTopR.y, u) - 2
-      const dx = (rnd() - 0.5) * 16
-      const k = (x: number) => n2(clamp(x / D))
-      const a = t0 / D
-      const kt = `0;${k(t0)};${k(t0 + 0.25)};${k(t0 + life - 0.4)};${k(t0 + life)};1`
-      const op = `0;0;.9;.75;0;0`
-      const mv = `0 0;0 0;${n1(dx * 0.2)} -6;${n1(dx * 0.85)} -24;${n1(dx)} -29;${n1(dx)} -29`
-      void a
-      return `<g transform="translate(${n1(x0)} ${n1(y0)})"><text font-family="ui-monospace,Consolas,monospace" font-size="${n1(7 + rnd() * 2.5)}" font-weight="700" text-anchor="middle" fill="${palCol(th)}" class="dyn-fill" opacity="0">${glyphs[i % glyphs.length]}<animate attributeName="opacity" dur="${D}s" repeatCount="indefinite" keyTimes="${kt}" values="${op}"/><animateTransform attributeName="transform" type="translate" dur="${D}s" repeatCount="indefinite" keyTimes="${kt}" values="${mv}"/></text></g>`
-    })
-    .join('')
+  const kt = (a: number) => n2(clamp(a / D))
+  const pop = (x: number, y: number, a: number, b: number, content: string, dx: number, dy: number, size: number, paint: string, mono = false) =>
+    `<g transform="translate(${n1(x)} ${n1(y)})"><g opacity="0"><animate attributeName="opacity" dur="${D}s" repeatCount="indefinite" keyTimes="0;${kt(a)};${kt(a + 0.15)};${kt(b - 0.3)};${kt(b)};1" values="0;0;1;.85;0;0"/><animateTransform attributeName="transform" type="translate" dur="${D}s" repeatCount="indefinite" keyTimes="0;${kt(a)};${kt(b)};1" values="0 0;0 0;${n1(dx)} ${n1(dy)};${n1(dx)} ${n1(dy)}"/><text ${mono ? 'font-family="ui-monospace,Consolas,monospace"' : FONT} font-size="${n1(size)}" font-weight="800" text-anchor="middle" ${paint}>${content}</text></g></g>`
+  const pal = `fill="${palCol(th)}" class="dyn-fill"`
+  let fx = ''
+  let gi = 0
+  for (let t = 0.2; t < D - 0.8; t += 0.42 - 0.16 * burst(t)) {
+    if (typing(t) < 0.6) continue
+    const u = 0.15 + rnd() * 0.75
+    fx += pop(lerp(lidTopL.x, lidTopR.x, u), lerp(lidTopL.y, lidTopR.y, u) - 2, t, t + 1.7, glyphs[gi++ % glyphs.length]!, (rnd() - 0.5) * 18, -29, 7 + rnd() * 2.5 + 2 * burst(t), pal, true)
+  }
+  const head = { x: M_BASE.x, y: M_BASE.y - BODY_BOTTOM * MS * 0.9 }
+  fx += pop(head.x + 30, head.y - 2, HMM_A + 0.15, EUREKA_A, '?', 4, -7, 17, pal)
+  fx += pop(head.x - 24, head.y + 6, HMM_A + 0.5, EUREKA_A, '?', -3, -5, 11, pal)
+  // eureka sparkles burst around the head
+  for (let k = 0; k < 6; k++) {
+    const a = (k / 6) * Math.PI * 2 + 0.3
+    fx += pop(head.x + Math.cos(a) * 18, head.y + 10 + Math.sin(a) * 14, EUREKA_A + k * 0.04, EUREKA_A + 1.1, '&#10022;', Math.cos(a) * 16, Math.sin(a) * 12 - 6, 9 + (k % 2) * 5, pal)
+  }
+  // confetti on "it compiled"
+  const conf = ['&#9632;', '&#9679;', '&#10022;', '&#9650;']
+  for (let k = 0; k < 16; k++) {
+    const x = head.x + (rnd() - 0.5) * 120
+    const white = k % 3 === 0
+    fx += pop(x, head.y - 30 - rnd() * 10, JUMP_A + 0.25 + rnd() * 0.25, JUMP_A + 1.9 + rnd() * 0.4, conf[k % 4]!, (rnd() - 0.5) * 30, 55 + rnd() * 35, 5 + rnd() * 4, white ? 'fill="#ffffff"' : pal)
+  }
+  fx += pop(head.x + 30, head.y + 4, WINK_A + 0.05, SHIP_A, '&#10022;', 4, -5, 13, pal)
 
   // ---- success badge pops above the lid
   const bx = lerp(lidTopL.x, lidTopR.x, 0.62)
   const by = Math.min(lidTopL.y, lidTopR.y) - 22
-  const kt = (a: number) => n2(a / D)
   const badge = `<g transform="translate(${n1(bx)} ${n1(by)})"><g opacity="0">
-<animate attributeName="opacity" dur="${D}s" repeatCount="indefinite" keyTimes="0;${kt(6.75)};${kt(6.9)};${kt(8.3)};${kt(8.7)};1" values="0;0;1;1;0;0"/>
-<animateTransform attributeName="transform" type="scale" dur="${D}s" repeatCount="indefinite" keyTimes="0;${kt(6.75)};${kt(6.95)};${kt(7.1)};${kt(8.3)};${kt(8.7)};1" values="0;0;1.25;1;1;.6;.6"/>
-<animateTransform attributeName="transform" type="translate" additive="sum" dur="${D}s" repeatCount="indefinite" keyTimes="0;${kt(6.75)};${kt(8.7)};1" values="0 4;0 4;0 -6;0 -6"/>
+<animate attributeName="opacity" dur="${D}s" repeatCount="indefinite" keyTimes="0;${kt(JUMP_A + 0.2)};${kt(JUMP_A + 0.35)};${kt(WINK_A + 0.3)};${kt(WINK_A + 0.7)};1" values="0;0;1;1;0;0"/>
+<animateTransform attributeName="transform" type="scale" dur="${D}s" repeatCount="indefinite" keyTimes="0;${kt(JUMP_A + 0.2)};${kt(JUMP_A + 0.4)};${kt(JUMP_A + 0.55)};${kt(WINK_A + 0.3)};${kt(WINK_A + 0.7)};1" values="0;0;1.3;1;1;.6;.6"/>
+<animateTransform attributeName="transform" type="translate" additive="sum" dur="${D}s" repeatCount="indefinite" keyTimes="0;${kt(JUMP_A + 0.2)};${kt(WINK_A + 0.7)};1" values="0 4;0 4;0 -6;0 -6"/>
 <circle r="8.5" fill="${palCol(th)}" class="dyn-fill" filter="url(#glowFx)"/>
 <path d="M-3.8 0.2L-1.2 2.8L4 -2.6" fill="none" stroke="${th.mode === 'dark' ? '#15121b' : '#ffffff'}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
 </g></g>`
@@ -620,11 +766,12 @@ function codingCard(th: Theme) {
   const mascot = `<g transform="translate(${n1(M_BASE.x)} ${n1(M_BASE.y)})"><g>${tr}<g>${rt}<g transform="translate(0 ${n1(BODY_BOTTOM * MS)})"><g>${sc}<g transform="translate(0 ${n1(-BODY_BOTTOM * MS)}) scale(${MS})">
 ${bodyLayers(th, '')}
 <g clip-path="url(#bodyClip)"><rect x="-120" y="-120" width="240" height="240" fill="url(#screenLight)" opacity="0">${bodyLit}</rect></g>
-${eyesMarkup(th, eyes, o)}
+${eyesSvg}
+${arcs}
+${mouth}
 </g></g></g></g></g></g>`
 
   const dot = `<circle cx="183" cy="91" r="3.6" fill="#3fb950"><animate attributeName="opacity" dur="1.5s" repeatCount="indefinite" values="1;.35;1"/></circle><circle cx="183" cy="91" r="3.6" fill="none" stroke="#3fb950" stroke-width="1.2"><animate attributeName="r" dur="1.5s" repeatCount="indefinite" values="3.6;8"/><animate attributeName="opacity" dur="1.5s" repeatCount="indefinite" values=".7;0"/></circle>`
-  void 0 && `<rect x="0" y="54" width="2.4" height="21" rx="1" fill="${palCol(th)}" class="dyn-fill"><animate attributeName="opacity" dur="1s" repeatCount="indefinite" calcMode="discrete" values="1;0"/></rect>`
 
   const body = `${groundShadow(th, mFoot.x, mFoot.y + 1, hopShadow)}
 ${mascot}
@@ -632,16 +779,17 @@ ${lap.deck}
 ${paw(0, 2)}${paw(1, 17)}
 ${lap.halo}
 ${lap.lid}
-${particles}
+${fx}
 ${badge}
 ${label(th)}<g ${FONT}>${captions(
     th,
     [
-      { a: 0, b: 3.3, title: 'In the zone', status: 'keys go brrrr', dot },
-      { a: 3.3, b: 4.55, title: 'Hmm&#8230;', status: 'asking the rubber duck', dot },
-      { a: 4.55, b: 6.7, title: 'Eureka!', status: 'outrunning the linter', dot },
-      { a: 6.7, b: 8.6, title: 'It compiled!', status: 'first try! (no one saw)', dot },
-      { a: 8.6, b: D, title: 'Shipping it', status: 'git push, fingers crossed', dot }
+      { a: 0, b: HMM_A, title: 'In the zone', status: 'keys go brrrr', dot },
+      { a: HMM_A, b: EUREKA_A, title: 'Hmm&#8230;', status: 'asking the rubber duck', dot },
+      { a: EUREKA_A, b: JUMP_A + 0.15, title: 'Eureka!', status: 'outrunning the linter', dot },
+      { a: JUMP_A + 0.15, b: WINK_A, title: 'It compiled!!', status: 'first try! (no one saw)', dot },
+      { a: WINK_A, b: SHIP_A, title: 'Nailed it', status: 'tiny victory dance', dot },
+      { a: SHIP_A, b: D, title: 'Shipping it', status: 'git push, fingers crossed', dot }
     ],
     D,
     { loop: true }
