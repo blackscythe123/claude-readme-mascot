@@ -131,10 +131,18 @@ function renderBloubSVG(t) {
   const card = BLOUB_CARDS[t.status === "coding" ? "coding" : "idle"][mode];
   const label = esc(t.label);
   const lag = (LOAD_LAG_SEC + Math.max(0, Number(t.lagSec) || 0)).toFixed(2);
+  // a small line under the caption: how long the current session (coding or away) has lasted
+  const coding = t.status === "coding";
+  const elapsed = t.sinceMs && t.nowMs ? formatElapsed(t.nowMs - t.sinceMs) : formatElapsed(t.mins * 60000);
+  const muted = mode === "dark" ? "#9a95a8" : "#5f596c";
+  const footer = t.hideTime
+    ? ""
+    : `<text x="178" y="116" font-family="'Segoe UI',Ubuntu,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="${muted}" opacity=".9">${coding ? `coding for ${elapsed}` : `away for ${elapsed}`}</text>`;
   return card
     .split("BLACKSCYTHE123").join(label.toUpperCase())
     .split("blackscythe123").join(label)
-    .replace("</style>", `.dyn-fill,.dyn-stroke{animation-delay:-${lag}s}</style>`);
+    .replace("</style>", `.dyn-fill,.dyn-stroke{animation-delay:-${lag}s}</style>`)
+    .replace(/<\/svg>\s*$/, `${footer}</svg>\n`);
 }
 
 // ---------- renderer ----------
