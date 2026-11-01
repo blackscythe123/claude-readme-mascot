@@ -126,19 +126,42 @@ export function resolveTheme(q = {}) {
 // server (`lagSec`), so every card stays in step.
 const LOAD_LAG_SEC = 0.3;
 
+// A README image is fetched once and never asks again, so the server can't push a new
+// number into an open page. Instead the card carries the next few hours of its own
+// count: one line per minute, each switched on by the SVG clock (`<set>`) exactly when
+// its minute arrives. "coding for 14m" becomes 15m a minute later, with no reload.
+// (A page left open keeps counting even if you stop; any reload shows the truth.)
+const TICK_MINUTES = 180;
+
+function tickingFooter(t, coding, muted) {
+  const startMs = t.sinceMs && t.nowMs ? t.nowMs - t.sinceMs : t.mins * 60000;
+  const word = coding ? "coding for" : "away for";
+  const toNextMinute = 60 - ((startMs / 1000) % 60); // seconds until the count first changes
+  let lines = "";
+  for (let k = 0; k <= TICK_MINUTES; k++) {
+    const shownMs = k === 0 ? startMs : Math.floor(startMs / 60000 + k) * 60000;
+    const begin = k === 0 ? 0 : toNextMinute + (k - 1) * 60;
+    const end = toNextMinute + k * 60;
+    const label = `${word} ${formatElapsed(shownMs)}`;
+    if (k === 0) {
+      lines += `<text>${label}<set attributeName="visibility" to="hidden" begin="${end.toFixed(1)}s" fill="freeze"/></text>`;
+    } else {
+      const last = k === TICK_MINUTES;
+      lines += `<text visibility="hidden">${label}<set attributeName="visibility" to="visible" begin="${begin.toFixed(1)}s"${last ? ' fill="freeze"' : ` end="${end.toFixed(1)}s"`}/></text>`;
+    }
+  }
+  return `<g transform="translate(178 116)" font-family="'Segoe UI',Ubuntu,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="${muted}" opacity=".9">${lines}</g>`;
+}
+
 function renderBloubSVG(t) {
   const mode = t.theme === "dark" || t.theme === "terminal" ? "dark" : "light";
   const card = BLOUB_CARDS[t.status === "coding" ? "coding" : "idle"][mode];
   const label = esc(t.label);
   const lag = (LOAD_LAG_SEC + Math.max(0, Number(t.lagSec) || 0)).toFixed(2);
-  // a small line under the caption: how long the current session (coding or away) has lasted
   const coding = t.status === "coding";
-  const elapsed = t.sinceMs && t.nowMs ? formatElapsed(t.nowMs - t.sinceMs) : formatElapsed(t.mins * 60000);
   const muted = mode === "dark" ? "#9a95a8" : "#5f596c";
   // a live card with no known start time (status expired long ago) shows no number
-  const footer = t.hideTime || t.sinceMs === 0
-    ? ""
-    : `<text x="178" y="116" font-family="'Segoe UI',Ubuntu,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="${muted}" opacity=".9">${coding ? `coding for ${elapsed}` : `away for ${elapsed}`}</text>`;
+  const footer = t.hideTime || t.sinceMs === 0 ? "" : tickingFooter(t, coding, muted);
   return card
     .split("BLACKSCYTHE123").join(label.toUpperCase())
     .split("blackscythe123").join(label)
