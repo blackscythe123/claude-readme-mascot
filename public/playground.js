@@ -4,7 +4,7 @@
 
 const $ = (id) => document.getElementById(id);
 const els = {
-  liveId: $("liveId"), status: $("status"), theme: $("theme"), font: $("font"), label: $("label"),
+  liveId: $("liveId"), status: $("status"), style: $("style"), crabOnly: $("crabOnly"), theme: $("theme"), font: $("font"), label: $("label"),
   body: $("body"), accent: $("accent"), text: $("text"), bg: $("bg"),
   transparent: $("transparent"), hide_time: $("hide_time"), border: $("border"),
   radius: $("radius"), radiusVal: $("radiusVal"), mins: $("mins"),
@@ -26,11 +26,19 @@ function applyThemeDefaults() {
   els.body.value = t.body; els.accent.value = t.accent; els.text.value = t.text; els.bg.value = t.bg;
 }
 
+const isCrab = () => els.style.value === "crab";
+
 // Theme/look params only — no status, mins, or id.
 function themeParams() {
   const t = THEMES[els.theme.value] || THEMES.light;
   const p = new URLSearchParams();
+  if (isCrab()) p.set("style", "crab");
   if (els.theme.value !== "light") p.set("theme", els.theme.value);
+  // Bloub cards are fixed art: only the theme (light/dark) and the label apply
+  if (!isCrab()) {
+    if (els.label.value && els.label.value !== "Claude") p.set("label", els.label.value);
+    return p.toString();
+  }
   if (els.font.value !== "system") p.set("font", els.font.value);
   if (els.label.value && els.label.value !== "Claude") p.set("label", els.label.value);
   if (hex(els.body.value).toLowerCase() !== hex(t.body).toLowerCase()) p.set("body", hex(els.body.value));
@@ -46,7 +54,7 @@ function themeParams() {
 
 function demoTail() {
   let q = "status=" + els.status.value;
-  if (els.status.value === "coding" && els.mins.value !== "23") q += "&mins=" + els.mins.value;
+  if (isCrab() && els.status.value === "coding" && els.mins.value !== "23") q += "&mins=" + els.mins.value;
   return q;
 }
 
@@ -67,11 +75,15 @@ function copyUrl() {
 function update() {
   els.radiusVal.textContent = els.radius.value;
   els.bg.disabled = els.transparent.checked;
+  els.crabOnly.hidden = !isCrab();
+  const [w, h] = isCrab() ? [480, 220] : [360, 130];
+  els.out.width = w;
+  els.out.height = h;
   els.out.src = previewUrl();
   const url = copyUrl();
   els.url.textContent = url;
   els.md.textContent = `![coding status](${url})`;
-  els.html.textContent = `<img src="${url}" alt="coding status" width="480" height="220">`;
+  els.html.textContent = `<img src="${url}" alt="coding status" width="${w}" height="${h}">`;
 }
 
 document.querySelectorAll("#controls input, #controls select").forEach((el) => {
@@ -88,7 +100,7 @@ document.querySelectorAll("[data-copy]").forEach((btn) => {
 });
 
 els.reset.addEventListener("click", () => {
-  els.status.value = "coding"; els.theme.value = "light"; els.font.value = "system";
+  els.status.value = "coding"; els.style.value = "bloub"; els.theme.value = "light"; els.font.value = "system";
   els.label.value = "Claude"; els.transparent.checked = false;
   els.hide_time.checked = false; els.border.checked = true;
   els.radius.value = "26"; els.mins.value = "23";

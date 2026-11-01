@@ -1,4 +1,10 @@
-// Mascot renderer — the Claude Claude, themeable + state-aware animated SVG.
+// Mascot renderer — themeable + state-aware animated SVG.
+//
+// Two styles:
+//   bloub (default) -> a 3D Bloub cloud companion: types at a laptop while you code, walks
+//                      off to bed and sleeps when you stop. Pre-rendered cards (dark + light)
+//                      bundled in src/bloub-cards.js; see scripts/bloub-cards.ts.
+//   crab            -> the original Clawd crab, rendered below.
 //
 // Character geometry ported from `clawd-react` by Steve Smith (MIT License) —
 // https://github.com/stevysmith/clawd-react. framer-motion (JS) is replaced
@@ -14,6 +20,8 @@
 // Theming is via resolveTheme(query) -> options object; renderMascotSVG(opts)
 // fills any missing field with light-theme defaults so it also works in Node.
 // Pure functions (no server APIs).
+
+import { BLOUB_CARDS } from "./bloub-cards.js";
 
 const EYE = "#1A1A1A";
 const ZS = "#818CF8";
@@ -91,6 +99,8 @@ function sanitizeText(v, def, max = 20) {
 export function resolveTheme(q = {}) {
   const preset = THEMES[pickEnum(q.theme, Object.keys(THEMES), "light")];
   return {
+    style: pickEnum(q.style, ["bloub", "crab"], "bloub"),
+    theme: pickEnum(q.theme, Object.keys(THEMES), "light"),
     status: pickEnum(q.status, ["coding", "idle"], "idle"),
     mins: clampInt(q.mins, 0, 60 * 48, 23),
     bg: hexColor(q.bg, preset.bg),
@@ -106,9 +116,22 @@ export function resolveTheme(q = {}) {
   };
 }
 
+// ---------- bloub (default style) ----------
+// The cards are fixed 360x130 art with their own palette animation; only the label is
+// swapped in. Dark-ish presets get the dark card, the rest the light one.
+function renderBloubSVG(t) {
+  const mode = t.theme === "dark" || t.theme === "terminal" ? "dark" : "light";
+  const card = BLOUB_CARDS[t.status === "coding" ? "coding" : "idle"][mode];
+  const label = esc(t.label);
+  return card
+    .split("BLACKSCYTHE123").join(label.toUpperCase())
+    .split("blackscythe123").join(label);
+}
+
 // ---------- renderer ----------
 export function renderMascotSVG(opts = {}) {
   const t = { ...resolveTheme({}), ...opts };
+  if (t.style !== "crab") return renderBloubSVG(t);
   const coding = t.status === "coding";
   const elapsed = (t.sinceMs && t.nowMs)
     ? formatElapsed(t.nowMs - t.sinceMs)

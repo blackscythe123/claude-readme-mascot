@@ -3,7 +3,7 @@
 # 🦀 Claude Coding Mascot
 
 **A live coding-status mascot for your GitHub profile README.**
-Clawd sits at a laptop and **codes while you code** (headband on, confetti when he's on a roll), and **naps when you stop** — fully themeable, served from Vercel.
+**Bloub**, a puffy 3D cloud, sits at a laptop and **codes while you code** (thinking, eureka moments, a little victory hop), then **closes the lid, hops into bed and falls asleep when you stop**. Prefer the original? The **Clawd** crab is one param away (`style=crab`). Served from Vercel.
 
 [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/blackscythe123.claude-coding-mascot?label=VS%20Code%20Marketplace&logo=visualstudiocode&color=007ACC)](https://marketplace.visualstudio.com/items?itemName=blackscythe123.claude-coding-mascot)
 [![Installs](https://img.shields.io/visual-studio-marketplace/i/blackscythe123.claude-coding-mascot?logo=visualstudiocode&label=installs)](https://marketplace.visualstudio.com/items?itemName=blackscythe123.claude-coding-mascot)
@@ -44,13 +44,18 @@ to configure it visually and copy the snippet, or build it by hand:
 |---|---|---|---|
 | `id` | string | — | your public id (live status). Omit for a `?status=` demo. |
 | `status` | `coding` \| `idle` | `idle` | demo scene when no `id` |
-| `theme` | `light` \| `dark` \| `terminal` \| `candy` | `light` | preset; colors below override it |
-| `body` · `accent` · `text` · `bg` | hex (no `#`) | theme | crab / headband / text / background (`bg=transparent` ok) |
-| `font` | `system` \| `mono` \| `inter` \| `serif` | `system` | font family |
-| `label` | text | `Claude` | name shown ("X is coding") |
-| `hide_time` | bool | `false` | hide the elapsed `· 23m` |
-| `border` | bool | `true` | card border |
-| `radius` | int 0–40 | `26` | corner radius |
+| `style` | `bloub` \| `crab` | `bloub` | which mascot |
+| `theme` | `light` \| `dark` \| `terminal` \| `candy` | `light` | preset (Bloub: `dark`/`terminal` give the dark card, the rest the light one) |
+| `label` | text | `Claude` | name shown on the card |
+| `body` · `accent` · `text` · `bg` | hex (no `#`) | theme | **crab only**: crab / headband / text / background (`bg=transparent` ok) |
+| `font` | `system` \| `mono` \| `inter` \| `serif` | `system` | **crab only**: font family |
+| `hide_time` | bool | `false` | **crab only**: hide the elapsed `· 23m` |
+| `border` | bool | `true` | **crab only**: card border |
+| `radius` | int 0–40 | `26` | **crab only**: corner radius |
+
+Bloub cards are 360×130 with a transparent background and their own colour cycle, so they sit
+next to other README cards without a frame. They're pre-rendered by `scripts/bloub-cards.ts`
+(see its header) and bundled with `node scripts/build-bloub.mjs`.
 
 Auto light/dark on GitHub? Use a `<picture>` with both URLs (light + `&theme=dark`).
 
