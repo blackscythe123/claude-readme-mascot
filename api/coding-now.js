@@ -22,8 +22,10 @@ export default async function handler(req, res) {
   }
 
   const since = Number((req.query && req.query.since) || (req.body && req.body.since)) || undefined;
+  // per-window session id (extension >= 0.1.6); absent = legacy single channel
+  const session = (req.query && req.query.session) || (req.body && req.body.session) || undefined;
   try {
-    const id = await setStatus(key, "coding", since);
+    const id = await setStatus(key, "coding", since, session);
     res.json({ ok: true, status: "coding", id });
   } catch (e) {
     res.status(500).json({ error: String(e.message || e) });

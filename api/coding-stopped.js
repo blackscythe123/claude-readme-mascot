@@ -21,8 +21,10 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: "server private", deploy: "https://github.com/blackscythe123/claude-readme-mascot#self-host" });
   }
 
+  // per-window session id (extension >= 0.1.6): only THIS window goes idle
+  const session = (req.query && req.query.session) || (req.body && req.body.session) || undefined;
   try {
-    const id = await setStatus(key, "idle");
+    const id = await setStatus(key, "idle", undefined, session);
     res.json({ ok: true, status: "idle", id });
   } catch (e) {
     res.status(500).json({ error: String(e.message || e) });

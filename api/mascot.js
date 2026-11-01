@@ -23,7 +23,7 @@ export default async function handler(req, res) {
       const live = await getStatus(String(id));
       if (live) {
         status = live.status;
-        sinceMs = live.sinceMs || nowMs;
+        sinceMs = live.sinceMs || 0; // 0 = unknown, the card then hides the elapsed time
       }
     } catch { /* store unavailable → fall back to demo status */ }
   }
@@ -32,7 +32,7 @@ export default async function handler(req, res) {
 
   res.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
   // live (id) changes often → short cache; demo can cache a bit longer
-  res.setHeader("Cache-Control", id ? "public, max-age=30, s-maxage=30" : "public, max-age=60, s-maxage=120");
+  res.setHeader("Cache-Control", id ? "no-cache, max-age=0, s-maxage=1, must-revalidate" : "public, max-age=60, s-maxage=120");
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.status(200).send(svg);
 }

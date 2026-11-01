@@ -135,7 +135,8 @@ function renderBloubSVG(t) {
   const coding = t.status === "coding";
   const elapsed = t.sinceMs && t.nowMs ? formatElapsed(t.nowMs - t.sinceMs) : formatElapsed(t.mins * 60000);
   const muted = mode === "dark" ? "#9a95a8" : "#5f596c";
-  const footer = t.hideTime
+  // a live card with no known start time (status expired long ago) shows no number
+  const footer = t.hideTime || t.sinceMs === 0
     ? ""
     : `<text x="178" y="116" font-family="'Segoe UI',Ubuntu,'Helvetica Neue',Arial,sans-serif" font-size="10.5" fill="${muted}" opacity=".9">${coding ? `coding for ${elapsed}` : `away for ${elapsed}`}</text>`;
   return card

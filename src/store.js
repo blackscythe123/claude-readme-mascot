@@ -4,8 +4,15 @@
 //   - The VS Code extension generates ONE secret `key`.
 //   - The README uses a PUBLIC id = sha256(key) (one-way: the public id can't
 //     be reversed to the key, so nobody can spoof your status from the README).
-//   - State lives under the public id, with a 5-minute TTL → auto-idle when the
-//     IDE stops pinging. Multiple IDEs can share the same key (same channel).
+//   - State lives under the public id, with a 15-minute TTL → auto-idle when the
+//     IDE stops pinging. Multiple IDEs / windows can share the same key.
+//   - Each editor window reports under its own session id (`sess:<id>` hash), so
+//     one window going idle or closing can't overwrite another that is coding:
+//     the channel reads "coding" if ANY live session is coding. Old extensions
+//     without a session id keep writing the single `chan:<id>` value, which is
+//     merged in the same way.
+//   - `last:<id>` remembers when coding was last seen (30 days), so "away for"
+//     stays right even after the live entries expire.
 //
 // Env: works with the Vercel Upstash integration's vars, falling back to the
 // classic KV_* names.
@@ -29,6 +36,10 @@ export function publicIdFor(key) {
 }
 
 const chanKey = (publicId) => `chan:${publicId}`;
+const sessKey = (publicId) => `sess:${publicId}`;
+const lastKey = (publicId) => `last:${publicId}`;
+const LAST_TTL_SECONDS = 60 * 60 * 24 * 30;
+const SESSION_RE = /^[A-Za-z0-9_-]{6,64}$/;
 
 // Allowlist: if ALLOWED_IDS is set (comma-separated public ids), only those ids
 // may write live status / be read from the store. Unset = open (self-hosters).
@@ -39,24 +50,58 @@ export function isAllowed(publicId) {
 }
 
 // Called by the IDE (with the secret key) to update live status.
-// Single Redis command (write only) — the IDE sends its own `sinceMs` so we
+// One pipelined round trip (write only) — the IDE sends its own `sinceMs` so we
 // don't need a read to preserve the coding start time.
-export async function setStatus(secretKey, status, sinceMs) {
+export async function setStatus(secretKey, status, sinceMs, session) {
   const r = getRedis();
   if (!r) throw new Error("store not configured (missing Upstash env vars)");
   const id = publicIdFor(secretKey);
   const now = Date.now();
-  const value = status === "coding"
+  const coding = status === "coding";
+  const value = coding
     ? { status: "coding", sinceMs: Number(sinceMs) || now, lastSeenMs: now }
     : { status: "idle", sinceMs: now, lastSeenMs: now };
-  await r.set(chanKey(id), value, { ex: TTL_SECONDS });
+  const p = r.pipeline();
+  if (session && SESSION_RE.test(String(session))) {
+    p.hset(sessKey(id), { [String(session)]: value });
+    p.expire(sessKey(id), TTL_SECONDS);
+  } else {
+    p.set(chanKey(id), value, { ex: TTL_SECONDS });
+  }
+  if (coding) p.set(lastKey(id), now, { ex: LAST_TTL_SECONDS });
+  await p.exec();
   return id;
 }
 
+// Merge the legacy single value and the per-window sessions into one status.
+// Pure, so it can be tested without Redis.
+export function mergeStatus(legacy, sessions, lastCodingMs, nowMs = Date.now()) {
+  const parse = (v) => (typeof v === "string" ? safeJson(v) : v);
+  const fresh = [legacy, ...Object.values(sessions || {})]
+    .map(parse)
+    .filter((v) => v && typeof v === "object" && nowMs - (Number(v.lastSeenMs) || 0) <= TTL_SECONDS * 1000);
+  const coding = fresh.filter((v) => v.status === "coding");
+  if (coding.length) {
+    return { status: "coding", sinceMs: Math.min(...coding.map((v) => Number(v.sinceMs) || nowMs)) };
+  }
+  const last = Number(lastCodingMs) || 0;
+  const idleSince = Math.max(0, ...fresh.map((v) => Number(v.sinceMs) || 0));
+  return { status: "idle", sinceMs: last || idleSince || 0 };
+}
+
+function safeJson(s) {
+  try { return JSON.parse(s); } catch { return null; }
+}
+
 // Called by the SVG endpoint (with the public id) to read live status.
+// One pipelined round trip for the three keys.
 export async function getStatus(publicId) {
   const r = getRedis();
   if (!r) return null;
-  const s = await r.get(chanKey(publicId));
-  return s || { status: "idle", sinceMs: 0 };
+  const p = r.pipeline();
+  p.get(chanKey(publicId));
+  p.hgetall(sessKey(publicId));
+  p.get(lastKey(publicId));
+  const [legacy, sessions, last] = await p.exec();
+  return mergeStatus(legacy, sessions, last);
 }
