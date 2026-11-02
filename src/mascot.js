@@ -122,9 +122,15 @@ export function resolveTheme(q = {}) {
 // The colour cycle (150 s, 30 palettes) starts when the image finishes loading, so a
 // heavy card starts it later than the light cards around it. Measured on a GitHub
 // profile: 0.05-0.65 s behind depending on load order, so we aim for the middle.
-// The cycle is pulled forward by that, plus the time this request spent on the
-// server (`lagSec`), so every card stays in step.
+// The cycle is pulled forward by that. The time this request spent on the server is
+// already covered: the start offset below reads the clock at render time.
 const LOAD_LAG_SEC = 0.3;
+
+// Shared colour clock, the same rule as every other card service: the card starts at the
+// point of the 150 s colour cycle the wall clock is at when it is rendered.
+function startOffsetSec(now = Date.now()) {
+  return Math.round(((now / 1000) % 150) * 100) / 100;
+}
 
 // A README image is fetched once and never asks again, so the server can't push a new
 // number into an open page. Instead the card carries the next few hours of its own
@@ -157,7 +163,7 @@ function renderBloubSVG(t) {
   const mode = t.theme === "dark" || t.theme === "terminal" ? "dark" : "light";
   const card = BLOUB_CARDS[t.status === "coding" ? "coding" : "idle"][mode];
   const label = esc(t.label);
-  const lag = (LOAD_LAG_SEC + Math.max(0, Number(t.lagSec) || 0)).toFixed(2);
+  const lag = (LOAD_LAG_SEC + startOffsetSec()).toFixed(2); // clock read at render covers server time
   const coding = t.status === "coding";
   const muted = mode === "dark" ? "#9a95a8" : "#5f596c";
   // a live card with no known start time (status expired long ago) shows no number
