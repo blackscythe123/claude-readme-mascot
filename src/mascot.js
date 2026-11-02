@@ -149,7 +149,20 @@ function tickingFooter(t, coding, muted) {
     const begin = k === 0 ? 0 : toNextMinute + (k - 1) * 60;
     const end = toNextMinute + k * 60;
     const label = `${word} ${formatElapsed(shownMs)}`;
-    if (k === 0) {
+    if (k === 0 && startMs < 60000) {
+      // Under a minute the label shows seconds, so tick every second until the first
+      // minute (one <text> per second, switched like the minute ones) instead of
+      // holding e.g. "24s" for 36 s, which reads as frozen.
+      const startSec = Math.floor(startMs / 1000);
+      for (let s = startSec; s < 60; s++) {
+        const from = s - startMs / 1000;
+        const to = s + 1 === 60 ? end : s + 1 - startMs / 1000;
+        const text = `${word} ${s}s`;
+        lines += s === startSec
+          ? `<text>${text}<set attributeName="visibility" to="hidden" begin="${to.toFixed(2)}s" fill="freeze"/></text>`
+          : `<text visibility="hidden">${text}<set attributeName="visibility" to="visible" begin="${from.toFixed(2)}s" end="${to.toFixed(2)}s"/></text>`;
+      }
+    } else if (k === 0) {
       lines += `<text>${label}<set attributeName="visibility" to="hidden" begin="${end.toFixed(1)}s" fill="freeze"/></text>`;
     } else {
       const last = k === TICK_MINUTES;

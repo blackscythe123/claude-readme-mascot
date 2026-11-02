@@ -8,7 +8,12 @@ import { renderMascotSVG, resolveTheme } from "../src/mascot.js";
 import { getStatus, isAllowed } from "../src/store.js";
 
 export default async function handler(req, res) {
-  const opts = resolveTheme(req.query || {});
+  const query = { ...(req.query || {}) };
+  // A demo request with no theme (`?status=coding`, what the VS Code extension's
+  // preview sends) gets the dark card: it sits on a dark editor panel. Live cards
+  // (`?id=`) keep the light default, which the profile README's light variant uses.
+  if (!query.theme && !query.id && query.status) query.theme = "dark";
+  const opts = resolveTheme(query);
   const nowMs = Date.now();
   const startedMs = nowMs; // server time is part of the colour-sync correction
 
