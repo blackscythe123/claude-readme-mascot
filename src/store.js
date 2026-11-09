@@ -48,6 +48,11 @@ const HOLD_TTL_SECONDS = 60 * 60 * 24 * 30;
 // period: the coding timer never starts before this.
 const releasedKey = (publicId) => `released:${publicId}`;
 const RELEASED_TTL_SECONDS = 60 * 60 * 24;
+// Account-wide coding streak: when the current continuous run of coding began. Every
+// coding heartbeat (any window, folder, editor or laptop) keeps it alive; it ends after
+// TTL_SECONDS with no coding heartbeat at all. So switching folders (Ctrl+K Ctrl+O),
+// reloading or moving windows keeps "coding for 4h" instead of dropping to 1m.
+const streakKey = (publicId) => `streak:${publicId}`;
 const LAST_TTL_SECONDS = 60 * 60 * 24 * 30;
 const SESSION_RE = /^[A-Za-z0-9_-]{6,64}$/;
 
@@ -78,14 +83,18 @@ export async function setStatus(secretKey, status, sinceMs, session) {
   } else {
     p.set(chanKey(id), value, { ex: TTL_SECONDS });
   }
-  if (coding) p.set(lastKey(id), now, { ex: LAST_TTL_SECONDS });
+  if (coding) {
+    p.set(lastKey(id), now, { ex: LAST_TTL_SECONDS });
+    p.set(streakKey(id), value.sinceMs, { ex: TTL_SECONDS, nx: true }); // starts a run if none
+    p.expire(streakKey(id), TTL_SECONDS); // keeps the run alive
+  }
   await p.exec();
   return id;
 }
 
 // Merge the legacy single value and the per-window sessions into one status.
 // Pure, so it can be tested without Redis.
-export function mergeStatus(legacy, sessions, lastCodingMs, nowMs = Date.now(), privateSinceMs = 0, privateEndedMs = 0) {
+export function mergeStatus(legacy, sessions, lastCodingMs, nowMs = Date.now(), privateSinceMs = 0, privateEndedMs = 0, streakSinceMs = 0) {
   if (Number(privateSinceMs) > 0) return { status: "idle", sinceMs: Number(privateSinceMs) };
   const parse = (v) => (typeof v === "string" ? safeJson(v) : v);
   const fresh = [legacy, ...Object.values(sessions || {})]
@@ -93,7 +102,8 @@ export function mergeStatus(legacy, sessions, lastCodingMs, nowMs = Date.now(), 
     .filter((v) => v && typeof v === "object" && nowMs - (Number(v.lastSeenMs) || 0) <= TTL_SECONDS * 1000);
   const coding = fresh.filter((v) => v.status === "coding");
   if (coding.length) {
-    const since = Math.min(...coding.map((v) => Number(v.sinceMs) || nowMs));
+    const streak = Number(streakSinceMs) || Infinity;
+    const since = Math.min(streak, ...coding.map((v) => Number(v.sinceMs) || nowMs));
     return { status: "coding", sinceMs: Math.max(since, Number(privateEndedMs) || 0) };
   }
   const last = Number(lastCodingMs) || 0;
@@ -116,8 +126,9 @@ export async function getStatus(publicId) {
   p.get(lastKey(publicId));
   p.get(holdKey(publicId));
   p.get(releasedKey(publicId));
-  const [legacy, sessions, last, hold, released] = await p.exec();
-  return mergeStatus(legacy, sessions, last, Date.now(), hold, released);
+  p.get(streakKey(publicId));
+  const [legacy, sessions, last, hold, released, streak] = await p.exec();
+  return mergeStatus(legacy, sessions, last, Date.now(), hold, released, streak);
 }
 
 // Account-wide mode, set by the extension's Auto / Private / Pin switch. Only Private is
@@ -128,6 +139,7 @@ export async function setMode(secretKey, mode, session) {
   if (!r) throw new Error("store not configured (missing Upstash env vars)");
   const id = publicIdFor(secretKey);
   if (mode === "private") {
+    await r.del(streakKey(id)); // the private period never counts towards a later run
     await r.set(holdKey(id), Date.now(), { ex: HOLD_TTL_SECONDS, nx: true }); // keep the original start
     await setStatus(secretKey, "idle", undefined, session);
   } else if (await r.del(holdKey(id))) {
