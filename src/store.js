@@ -43,6 +43,11 @@ const lastKey = (publicId) => `last:${publicId}`;
 // still coding kept the card on "In the zone"). Value = when Private began.
 const holdKey = (publicId) => `hold:${publicId}`;
 const HOLD_TTL_SECONDS = 60 * 60 * 24 * 30;
+// When Private last ended. A window that kept coding during Private would otherwise show
+// its whole timer ("coding for 15m") the moment Private ends, revealing the private
+// period: the coding timer never starts before this.
+const releasedKey = (publicId) => `released:${publicId}`;
+const RELEASED_TTL_SECONDS = 60 * 60 * 24;
 const LAST_TTL_SECONDS = 60 * 60 * 24 * 30;
 const SESSION_RE = /^[A-Za-z0-9_-]{6,64}$/;
 
@@ -80,7 +85,7 @@ export async function setStatus(secretKey, status, sinceMs, session) {
 
 // Merge the legacy single value and the per-window sessions into one status.
 // Pure, so it can be tested without Redis.
-export function mergeStatus(legacy, sessions, lastCodingMs, nowMs = Date.now(), privateSinceMs = 0) {
+export function mergeStatus(legacy, sessions, lastCodingMs, nowMs = Date.now(), privateSinceMs = 0, privateEndedMs = 0) {
   if (Number(privateSinceMs) > 0) return { status: "idle", sinceMs: Number(privateSinceMs) };
   const parse = (v) => (typeof v === "string" ? safeJson(v) : v);
   const fresh = [legacy, ...Object.values(sessions || {})]
@@ -88,7 +93,8 @@ export function mergeStatus(legacy, sessions, lastCodingMs, nowMs = Date.now(), 
     .filter((v) => v && typeof v === "object" && nowMs - (Number(v.lastSeenMs) || 0) <= TTL_SECONDS * 1000);
   const coding = fresh.filter((v) => v.status === "coding");
   if (coding.length) {
-    return { status: "coding", sinceMs: Math.min(...coding.map((v) => Number(v.sinceMs) || nowMs)) };
+    const since = Math.min(...coding.map((v) => Number(v.sinceMs) || nowMs));
+    return { status: "coding", sinceMs: Math.max(since, Number(privateEndedMs) || 0) };
   }
   const last = Number(lastCodingMs) || 0;
   const idleSince = Math.max(0, ...fresh.map((v) => Number(v.sinceMs) || 0));
@@ -109,8 +115,9 @@ export async function getStatus(publicId) {
   p.hgetall(sessKey(publicId));
   p.get(lastKey(publicId));
   p.get(holdKey(publicId));
-  const [legacy, sessions, last, hold] = await p.exec();
-  return mergeStatus(legacy, sessions, last, Date.now(), hold);
+  p.get(releasedKey(publicId));
+  const [legacy, sessions, last, hold, released] = await p.exec();
+  return mergeStatus(legacy, sessions, last, Date.now(), hold, released);
 }
 
 // Account-wide mode, set by the extension's Auto / Private / Pin switch. Only Private is
@@ -123,8 +130,9 @@ export async function setMode(secretKey, mode, session) {
   if (mode === "private") {
     await r.set(holdKey(id), Date.now(), { ex: HOLD_TTL_SECONDS, nx: true }); // keep the original start
     await setStatus(secretKey, "idle", undefined, session);
-  } else {
-    await r.del(holdKey(id));
+  } else if (await r.del(holdKey(id))) {
+    // leaving Private: the coding timer restarts from now (see releasedKey)
+    await r.set(releasedKey(id), Date.now(), { ex: RELEASED_TTL_SECONDS });
   }
   return id;
 }
