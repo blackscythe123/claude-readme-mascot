@@ -33,6 +33,17 @@ let lastTick = 0;
 // The mode is also stored on the server (POST /api/mode), so Private hides the card for the
 // whole account, not only this window. false = not confirmed yet: retried every tick.
 let modeSynced = false;
+// Reload / restart continuity (per workspace). A reload starts a new extension host with a
+// new SESSION, and the old one can't say goodbye in time, so it lingered on the server as
+// "coding" for up to 15 min. We remember our session id and retire it on the next start,
+// and remember when coding began so the timer resumes instead of restarting at 0.
+const SESSION_STATE = "claudeMascot.session";
+const CODING_STATE = "claudeMascot.lastCoding"; // { since, beat }
+const RESUME_WITHIN_MS = 15 * 60 * 1000; // the server's TTL
+let resumeSince = 0;
+function startSince(now) { const s = resumeSince || now; resumeSince = 0; return s; }
+function rememberCoding(now) { ctx.workspaceState.update(CODING_STATE, { since: codingSince, beat: now }); }
+function forgetCoding() { ctx.workspaceState.update(CODING_STATE, undefined); }
 // One id per editor window: the server keeps each window's status apart, so a
 // window going idle or closing can't overwrite another one that is coding.
 const SESSION = (crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString("hex")).replace(/[^A-Za-z0-9_-]/g, "");
@@ -126,7 +137,7 @@ async function tick() {
   if (mode === "private") {
     if (currentStatus !== "idle") {
       const code = await post("/api/coding-stopped");
-      if (ok(code)) { currentStatus = "idle"; render(); } // otherwise retry next tick
+      if (ok(code)) { currentStatus = "idle"; forgetCoding(); render(); } // otherwise retry next tick
     }
     return;
   }
@@ -134,12 +145,12 @@ async function tick() {
   // so closing the laptop lets it expire to idle — no server-side persistence.
   if (mode === "pinned") {
     if (currentStatus !== "coding" || now - lastCodingPost > HEARTBEAT_MS) {
-      if (currentStatus !== "coding") codingSince = now;
+      if (currentStatus !== "coding") codingSince = startSince(now);
       const code = await post(`/api/coding-now?since=${codingSince}`);
       if (code === 403) return setLocked(true);
       if (code) setLocked(false);
       // only a confirmed write counts: a failure (offline, waking up, 5xx) retries next tick
-      if (ok(code)) { lastCodingPost = now; currentStatus = "coding"; render(); }
+      if (ok(code)) { lastCodingPost = now; currentStatus = "coding"; rememberCoding(now); render(); }
     }
     return;
   }
@@ -147,7 +158,7 @@ async function tick() {
   // Auto: activity-based.
   const active = now - lastActivity <= idleTimeoutMs();
   if (active) {
-    if (currentStatus !== "coding") codingSince = now; // start of a new coding session
+    if (currentStatus !== "coding") codingSince = startSince(now); // start of a coding session (or resume after a reload)
     if (currentStatus !== "coding" || now - lastCodingPost > HEARTBEAT_MS) {
       const code = await post(`/api/coding-now?since=${codingSince}`);
       if (code === 403) return setLocked(true);
@@ -155,6 +166,7 @@ async function tick() {
       if (ok(code)) {
         lastCodingPost = now;
         currentStatus = "coding";
+        rememberCoding(now);
         render();
       }
     }
@@ -162,6 +174,7 @@ async function tick() {
     const code = await post("/api/coding-stopped");
     if (ok(code)) {
       currentStatus = "idle";
+      forgetCoding();
       render();
     }
   }
@@ -171,6 +184,7 @@ async function tick() {
 async function setMode(m) {
   mode = m;
   modeSynced = false;
+  resumeSince = 0; // a deliberate switch starts fresh
   await ctx.globalState.update("claudeMascot.mode", m);
   if (m === "private" || m === "pinned") {
     if (m === "pinned") codingSince = Date.now();
@@ -388,6 +402,14 @@ function activate(context) {
     key = k || null;
     render();
     if (!key) return;
+    // retire the session this workspace used before a reload / restart, and resume its timer
+    const prev = context.workspaceState.get(SESSION_STATE);
+    context.workspaceState.update(SESSION_STATE, SESSION);
+    if (prev && prev !== SESSION && /^[A-Za-z0-9_-]{6,64}$/.test(prev) && typeof fetch === "function") {
+      fetch(baseUrl() + "/api/coding-stopped?session=" + prev, { method: "POST", headers: { authorization: "Bearer " + key } }).catch(() => {});
+    }
+    const last = context.workspaceState.get(CODING_STATE);
+    if (last && Date.now() - Number(last.beat) < RESUME_WITHIN_MS && Number(last.since) > 0) resumeSince = Number(last.since);
     if (mode === "pinned") codingSince = Date.now();
     if (mode === "private" || mode === "pinned") { currentStatus = "unknown"; lastCodingPost = 0; tick(); }
     else { markActivity(); tick(); }
