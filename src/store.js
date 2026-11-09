@@ -38,6 +38,11 @@ export function publicIdFor(key) {
 const chanKey = (publicId) => `chan:${publicId}`;
 const sessKey = (publicId) => `sess:${publicId}`;
 const lastKey = (publicId) => `last:${publicId}`;
+// Account-wide Private: while set, every card shows idle whatever any window, editor or
+// laptop reports (Private used to idle only the window that chose it, so any other session
+// still coding kept the card on "In the zone"). Value = when Private began.
+const holdKey = (publicId) => `hold:${publicId}`;
+const HOLD_TTL_SECONDS = 60 * 60 * 24 * 30;
 const LAST_TTL_SECONDS = 60 * 60 * 24 * 30;
 const SESSION_RE = /^[A-Za-z0-9_-]{6,64}$/;
 
@@ -75,7 +80,8 @@ export async function setStatus(secretKey, status, sinceMs, session) {
 
 // Merge the legacy single value and the per-window sessions into one status.
 // Pure, so it can be tested without Redis.
-export function mergeStatus(legacy, sessions, lastCodingMs, nowMs = Date.now()) {
+export function mergeStatus(legacy, sessions, lastCodingMs, nowMs = Date.now(), privateSinceMs = 0) {
+  if (Number(privateSinceMs) > 0) return { status: "idle", sinceMs: Number(privateSinceMs) };
   const parse = (v) => (typeof v === "string" ? safeJson(v) : v);
   const fresh = [legacy, ...Object.values(sessions || {})]
     .map(parse)
@@ -102,6 +108,23 @@ export async function getStatus(publicId) {
   p.get(chanKey(publicId));
   p.hgetall(sessKey(publicId));
   p.get(lastKey(publicId));
-  const [legacy, sessions, last] = await p.exec();
-  return mergeStatus(legacy, sessions, last);
+  p.get(holdKey(publicId));
+  const [legacy, sessions, last, hold] = await p.exec();
+  return mergeStatus(legacy, sessions, last, Date.now(), hold);
+}
+
+// Account-wide mode, set by the extension's Auto / Private / Pin switch. Only Private is
+// stored (Auto and Pin clear it): Pin stays per-window on purpose, so closing the laptop
+// still lets the card fall back to idle.
+export async function setMode(secretKey, mode, session) {
+  const r = getRedis();
+  if (!r) throw new Error("store not configured (missing Upstash env vars)");
+  const id = publicIdFor(secretKey);
+  if (mode === "private") {
+    await r.set(holdKey(id), Date.now(), { ex: HOLD_TTL_SECONDS, nx: true }); // keep the original start
+    await setStatus(secretKey, "idle", undefined, session);
+  } else {
+    await r.del(holdKey(id));
+  }
+  return id;
 }

@@ -30,6 +30,9 @@ let locked = false;
 let warnedLocked = false;
 let timer = null;
 let lastTick = 0;
+// The mode is also stored on the server (POST /api/mode), so Private hides the card for the
+// whole account, not only this window. false = not confirmed yet: retried every tick.
+let modeSynced = false;
 // One id per editor window: the server keeps each window's status apart, so a
 // window going idle or closing can't overwrite another one that is coding.
 const SESSION = (crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString("hex")).replace(/[^A-Za-z0-9_-]/g, "");
@@ -108,7 +111,12 @@ async function tick() {
   const now = Date.now();
   // Another window may have changed the mode: follow it, and re-send right away.
   const shared = ctx.globalState.get("claudeMascot.mode", mode);
-  if (shared !== mode) { mode = shared; currentStatus = "unknown"; lastCodingPost = 0; }
+  if (shared !== mode) { mode = shared; currentStatus = "unknown"; lastCodingPost = 0; modeSynced = false; }
+  if (!modeSynced) {
+    const code = await post(`/api/mode?m=${mode}`);
+    if (code === 403) return setLocked(true);
+    if (ok(code) || code === 404) modeSynced = true; // 404: an older self-hosted server without /api/mode
+  }
   // A long gap between ticks means the laptop slept: the server entry has likely
   // expired, so re-send now instead of waiting for the next heartbeat.
   if (lastTick && now - lastTick > 2 * TICK_MS) lastCodingPost = 0;
@@ -162,6 +170,7 @@ async function tick() {
 // Switch mode; persisted locally so the extension reopens in the same mode.
 async function setMode(m) {
   mode = m;
+  modeSynced = false;
   await ctx.globalState.update("claudeMascot.mode", m);
   if (m === "private" || m === "pinned") {
     if (m === "pinned") codingSince = Date.now();
